@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use spaze_proto::{RoomId, ServerEvent};
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
-use tracing::info;
+use tracing::{info, warn};
 
 pub mod connection;
 pub mod time;
@@ -37,7 +37,7 @@ pub struct ServerState {
 pub struct ConnectionId(pub u64);
 
 impl ServerState {
-    /// Construct shared state. Broadcast buffer of 64 — see DESIGN.md.
+    /// Construct shared state. Broadcast buffer of 64 — see phase-1a spec.
     #[must_use]
     pub fn new() -> Arc<Self> {
         let (broadcast, _rx) = broadcast::channel(64);
@@ -79,7 +79,7 @@ pub async fn run(config: ServerConfig) -> Result<()> {
                         });
                     }
                     Err(err) => {
-                        tracing::warn!("accept failed: {err}");
+                        warn!("accept failed: {err}");
                     }
                 }
             }
