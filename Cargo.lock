@@ -637,7 +637,16 @@ dependencies = [
 name = "spaze-client"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
+ "clap",
+ "futures-util",
+ "serde_json",
  "spaze-proto",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
