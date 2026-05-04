@@ -2,7 +2,7 @@
 
 A terminal-first, project-centric team collaboration tool. Self-hostable, open source, GitHub-authenticated.
 
-> **Status:** pre-alpha. Bootstrapping the workspace. Not usable yet.
+> **Status:** pre-alpha. Phase 1.A complete — bare WS chat works in two terminals. TUI, theming, slash commands, auth still ahead.
 
 ## Why?
 
@@ -36,6 +36,23 @@ Requires Rust 1.85 or newer.
 ```bash
 cargo build --workspace
 ```
+
+## Running (Phase 1.A bare-WS demo)
+
+Three terminals — one server, two clients:
+
+```bash
+# Terminal 1
+cargo run --bin spaze-server
+
+# Terminal 2
+cargo run --bin spaze -- --name andreas
+
+# Terminal 3
+cargo run --bin spaze -- --name beth
+```
+
+Type a line in either client; both terminals will see it. Author shows as the first 8 hex chars of the UUIDv5-derived UserId. Ctrl+C exits cleanly.
 
 ## Documentation
 

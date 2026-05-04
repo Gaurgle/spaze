@@ -236,7 +236,7 @@ Requires true-color (24-bit) terminal — modern terminals (Alacritty, Kitty, We
 
 | Phase | Week | Deliverable |
 |-------|------|-------------|
-| 1 | 1 | Workspace, `spaze-proto` (IDs/errors/messages/events with correlation frames), server + client skeletons, **buffer abstraction** in TUI from day one, **slash command parser**, **theming module scaffold**, single hardcoded Space/Room, plaintext WebSocket — two terminals chat |
+| 1 | 1 | Workspace, `spaze-proto`, server + client skeletons, buffer abstraction, slash command parser, theming scaffold, single hardcoded Space/Room, plaintext WebSocket — two terminals chat. **Decomposed into 1.A (bare WS chat ✅), 1.B (TUI + buffer + theming), 1.C (slash commands).** |
 | 2 | 2 | SQLite persistence, multi-Space + multi-Room, room join/leave, reconnection catch-up via cursor protocol, TLS, **first-run configuration assistant** |
 | 3 | 3 | GitHub OAuth Device Flow, per-device Ed25519 keypairs, keychain + `token-cmd`, refresh/session tokens, roles, **bootstrap admin invite-token flow** |
 | 4 | 4 | Region-based mouse dispatch, full input model (vim + mouse + arrows + buttons + hover cursor), buffer-index quick jump, syntect, pulldown-cmark, **theming complete (8 built-ins + user-loadable)** |
@@ -244,6 +244,16 @@ Requires true-color (24-bit) terminal — modern terminals (Alacritty, Kitty, We
 | 6 | 6 | Message pinning + pins buffer, room mute/pin, inline command parser (`#note`/`#todo`), Space-level notez/todoz store, notez/todoz buffers with filtering, clickable tags, highlight script notifications, **server-side FTS5 search** |
 | 7 | 7 | Tier 1 repo linking (paste GitHub URL → bind), tag system integration with linked repos, export/sync server notez/todoz → repo notez/todoz files |
 | 8 | 8 | Polish, `cargo-dist`, Docker image hardening, `DEPLOYMENT.md`, Homebrew tap |
+
+## Sub-project tracking
+
+Phase 1 was decomposed during brainstorming into three sub-projects, each with its own spec under `docs/superpowers/specs/` and plan under `docs/superpowers/plans/`:
+
+| Sub-project | Status | Spec | Plan |
+|---|---|---|---|
+| 1.A — WS round-trip MVP | ✅ shipped | `2026-05-04-phase-1a-ws-mvp-design.md` | `2026-05-04-phase-1a-ws-mvp.md` |
+| 1.B — TUI shell + buffer + theming scaffold | not yet planned | — | — |
+| 1.C — Slash command parser | not yet planned | — | — |
 
 ## Roadmap (post-1.0)
 
