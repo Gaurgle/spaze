@@ -172,6 +172,8 @@ mod tests {
             request_id: RequestId(42),
             command: ClientCommand::PostMessage {
                 room_id: RoomId::new(),
+                author_id: UserId::new(),
+                author_device_id: DeviceId::new(),
                 body: MessageBody::Text {
                     content: "hi".into(),
                 },
@@ -189,6 +191,42 @@ mod tests {
         let parsed: ClientFrame = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.request_id, RequestId(42));
         assert!(matches!(parsed.command, ClientCommand::PostMessage { .. }));
+    }
+
+    #[test]
+    fn post_message_carries_author_fields() {
+        let user = UserId::new();
+        let device = DeviceId::new();
+        let cmd = ClientCommand::PostMessage {
+            room_id: RoomId::new(),
+            author_id: user,
+            author_device_id: device,
+            body: MessageBody::Text {
+                content: "hello".into(),
+            },
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert!(json.contains("\"type\":\"post_message\""));
+        assert!(
+            json.contains("author_id"),
+            "author_id field missing in {json}"
+        );
+        assert!(
+            json.contains("author_device_id"),
+            "author_device_id field missing in {json}"
+        );
+        let parsed: ClientCommand = serde_json::from_str(&json).unwrap();
+        match parsed {
+            ClientCommand::PostMessage {
+                author_id,
+                author_device_id,
+                ..
+            } => {
+                assert_eq!(author_id, user);
+                assert_eq!(author_device_id, device);
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
     }
 
     #[test]

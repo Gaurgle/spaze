@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::ProtocolError;
-use crate::ids::{MessageId, RoomId, UserId};
+use crate::ids::{DeviceId, MessageId, RoomId, UserId};
 use crate::messages::{Message, MessageBody};
 
 /// Per-connection correlation token for client commands and their responses.
@@ -100,6 +100,8 @@ pub enum ServerEvent {
 pub enum ClientCommand {
     PostMessage {
         room_id: RoomId,
+        author_id: UserId,
+        author_device_id: DeviceId,
         body: MessageBody,
     },
     EditMessage {
