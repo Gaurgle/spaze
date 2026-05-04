@@ -40,11 +40,11 @@ cargo build --workspace
 ## Documentation
 
 - [DESIGN.md](./DESIGN.md) — architecture, scope, and locked decisions.
-- `LICENSE-APACHE` — Apache 2.0.
+- `LICENSE-APACHE` - Apache 2.0.
 
 ## Contributing
 
-Pre-alpha; not accepting external contributions yet. Star and watch if you're curious — issues will open once the MVP is functional.
+Pre-alpha; not accepting external contributions yet. Star and watch if you're curious - issues will open once the MVP is functional.
 
 ## License
 
