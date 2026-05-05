@@ -5,7 +5,7 @@ use spaze_proto::RoomId;
 use uuid::Uuid;
 
 #[derive(Parser, Debug)]
-#[command(version, about = "Spaze TUI client (Phase 1.A: stdin/stdout)")]
+#[command(version, about = "Spaze TUI client (Phase 1.B: ratatui)")]
 struct Cli {
     /// Display name. Defaults to $USER, or "anon" if unset.
     #[arg(long)]
@@ -42,6 +42,7 @@ async fn main() -> Result<()> {
         server_url: cli.server,
         user_id,
         device_id,
+        display_name: name,
         room_id,
     };
 
