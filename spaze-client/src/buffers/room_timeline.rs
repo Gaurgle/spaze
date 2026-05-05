@@ -146,54 +146,62 @@ impl RoomTimelineBuffer {
                     .to_lowercase()
                     .contains(&format!("@{}", self.self_display_name).to_lowercase());
 
-            let line_style = if mention {
-                Style::default().bg(theme.mention)
+            // When a line is a mention, swap to highlighter mode: pink bg with
+            // dark text so the line is eye-catching AND readable (the previous
+            // light-text-on-light-pink failed contrast).
+            let (line_style, ts_fg, author_fg, body_fg, dim_fg) = if mention {
+                (
+                    Style::default().bg(theme.mention),
+                    theme.background,
+                    theme.background,
+                    theme.background,
+                    theme.surface,
+                )
             } else {
-                Style::default()
+                (
+                    Style::default(),
+                    theme.muted,
+                    theme.info,
+                    theme.foreground,
+                    theme.subtle,
+                )
             };
 
             let mut spans = vec![
-                Span::styled(format!("{ts} "), Style::default().fg(theme.muted)),
+                Span::styled(format!("{ts} "), Style::default().fg(ts_fg)),
                 Span::styled(
                     format!("<{author_display}> "),
-                    Style::default().fg(theme.info).add_modifier(Modifier::BOLD),
+                    Style::default().fg(author_fg).add_modifier(Modifier::BOLD),
                 ),
             ];
             match &msg.body {
                 MessageBody::Text { content } => {
-                    spans.push(Span::styled(
-                        content.clone(),
-                        Style::default().fg(theme.foreground),
-                    ));
+                    spans.push(Span::styled(content.clone(), Style::default().fg(body_fg)));
                 }
                 MessageBody::System { content } => {
                     spans.push(Span::styled(
                         format!("-- system: {content}"),
-                        Style::default()
-                            .fg(theme.subtle)
-                            .add_modifier(Modifier::ITALIC),
+                        Style::default().fg(dim_fg).add_modifier(Modifier::ITALIC),
                     ));
                 }
                 _ => {
                     // MessageBody is non_exhaustive; future variants render as raw debug.
                     spans.push(Span::styled(
                         format!("{:?}", msg.body),
-                        Style::default().fg(theme.subtle),
+                        Style::default().fg(dim_fg),
                     ));
                 }
             }
             if msg.deleted_at_ms.is_some() {
                 spans.push(Span::styled(
                     "  [deleted]".to_string(),
-                    Style::default()
-                        .fg(theme.subtle)
-                        .add_modifier(Modifier::ITALIC),
+                    Style::default().fg(dim_fg).add_modifier(Modifier::ITALIC),
                 ));
             }
             if msg.edited_at_ms.is_some() {
                 spans.push(Span::styled(
                     "  (edited)".to_string(),
-                    Style::default().fg(theme.muted),
+                    Style::default().fg(ts_fg),
                 ));
             }
             lines.push(Line::from(spans).style(line_style));
