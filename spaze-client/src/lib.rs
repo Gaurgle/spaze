@@ -56,6 +56,7 @@ pub async fn run(config: ClientConfig) -> Result<()> {
                                 room_id: config.room_id,
                                 author_id: config.user_id,
                                 author_device_id: config.device_id,
+                                author_display_name: String::new(), // throwaway — Task 10 replaces this file
                                 body: MessageBody::Text { content: line },
                             },
                         };

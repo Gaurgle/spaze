@@ -141,6 +141,7 @@ async fn handle_command(
             room_id,
             author_id,
             author_device_id,
+            author_display_name,
             body,
         } => {
             let msg = Message {
@@ -148,6 +149,7 @@ async fn handle_command(
                 room_id,
                 author_id,
                 author_device_id,
+                author_display_name,
                 created_at_ms: now_unix_ms(),
                 edited_at_ms: None,
                 deleted_at_ms: None,
