@@ -15,6 +15,7 @@ use tracing::{info, warn};
 
 pub mod identity;
 pub mod render;
+pub mod theme;
 
 /// Configuration for the client connection.
 #[derive(Debug, Clone)]
@@ -142,5 +143,40 @@ mod tests {
     fn user_id_and_device_id_are_equal_in_phase_1a() {
         let (user, device) = derive_identity("andreas");
         assert_eq!(user.as_uuid(), device.as_uuid());
+    }
+
+    #[test]
+    fn theme_catppuccin_mocha_has_all_slots_set() {
+        use super::theme::Theme;
+        use super::theme::catppuccin_mocha::CATPPUCCIN_MOCHA;
+        use ratatui::style::Color;
+
+        // Pick a sentinel default. If any slot equals this, the slot was forgotten.
+        let default = Color::Reset;
+
+        let t: Theme = CATPPUCCIN_MOCHA;
+        assert_ne!(t.background, default, "background slot not set");
+        assert_ne!(t.surface, default, "surface slot not set");
+        assert_ne!(t.overlay, default, "overlay slot not set");
+        assert_ne!(t.foreground, default, "foreground slot not set");
+        assert_ne!(t.muted, default, "muted slot not set");
+        assert_ne!(t.subtle, default, "subtle slot not set");
+        assert_ne!(t.primary, default, "primary slot not set");
+        assert_ne!(t.success, default, "success slot not set");
+        assert_ne!(t.warning, default, "warning slot not set");
+        assert_ne!(t.error, default, "error slot not set");
+        assert_ne!(t.info, default, "info slot not set");
+        assert_ne!(t.mention, default, "mention slot not set");
+        assert_ne!(t.link, default, "link slot not set");
+        assert_ne!(t.border, default, "border slot not set");
+        assert_ne!(t.border_focused, default, "border_focused slot not set");
+        assert_ne!(t.tab_room, default, "tab_room slot not set");
+        assert_ne!(t.tab_dm, default, "tab_dm slot not set");
+        assert_ne!(t.tab_special, default, "tab_special slot not set");
+        assert_ne!(t.tab_unread, default, "tab_unread slot not set");
+        assert!(
+            !t.syntect_theme_name.is_empty(),
+            "syntect_theme_name not set"
+        );
     }
 }
