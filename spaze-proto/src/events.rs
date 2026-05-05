@@ -102,6 +102,7 @@ pub enum ClientCommand {
         room_id: RoomId,
         author_id: UserId,
         author_device_id: DeviceId,
+        author_display_name: String,
         body: MessageBody,
     },
     EditMessage {
