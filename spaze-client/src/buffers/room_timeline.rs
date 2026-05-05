@@ -3,7 +3,6 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::widgets::Paragraph;
 use spaze_proto::{Message, RoomId};
 
 use crate::buffers::BufferKind;
@@ -121,13 +120,89 @@ impl RoomTimelineBuffer {
         }
     }
 
-    /// Real implementation lands in Task 9.
-    pub fn render(&mut self, frame: &mut Frame, area: Rect, _theme: &Theme) {
-        let placeholder = Paragraph::new(format!(
-            "[room timeline placeholder — {} messages]",
-            self.messages.len()
-        ));
-        frame.render_widget(placeholder, area);
+    pub fn render(&mut self, frame: &mut Frame, area: Rect, theme: &Theme) {
+        use chrono::TimeZone;
+        use ratatui::style::{Modifier, Style};
+        use ratatui::text::{Line, Span};
+        use spaze_proto::MessageBody;
+
+        let mut lines: Vec<Line> = Vec::with_capacity(self.messages.len());
+
+        for msg in &self.messages {
+            let ts = chrono::Utc
+                .timestamp_millis_opt(msg.created_at_ms)
+                .single()
+                .map_or_else(|| "??:??".into(), |dt| dt.format("%H:%M").to_string());
+
+            let author_display = if msg.author_display_name.is_empty() {
+                // Fallback to 8-char hex prefix (same shape as 1.A's stdout output).
+                format!("{:.8}", msg.author_id.as_uuid().simple())
+            } else {
+                msg.author_display_name.clone()
+            };
+
+            let mention = !self.self_display_name.is_empty()
+                && body_text(&msg.body)
+                    .to_lowercase()
+                    .contains(&format!("@{}", self.self_display_name).to_lowercase());
+
+            let line_style = if mention {
+                Style::default().bg(theme.mention)
+            } else {
+                Style::default()
+            };
+
+            let mut spans = vec![
+                Span::styled(format!("{ts} "), Style::default().fg(theme.muted)),
+                Span::styled(
+                    format!("<{author_display}> "),
+                    Style::default().fg(theme.info).add_modifier(Modifier::BOLD),
+                ),
+            ];
+            match &msg.body {
+                MessageBody::Text { content } => {
+                    spans.push(Span::styled(
+                        content.clone(),
+                        Style::default().fg(theme.foreground),
+                    ));
+                }
+                MessageBody::System { content } => {
+                    spans.push(Span::styled(
+                        format!("-- system: {content}"),
+                        Style::default()
+                            .fg(theme.subtle)
+                            .add_modifier(Modifier::ITALIC),
+                    ));
+                }
+                _ => {
+                    // MessageBody is non_exhaustive; future variants render as raw debug.
+                    spans.push(Span::styled(
+                        format!("{:?}", msg.body),
+                        Style::default().fg(theme.subtle),
+                    ));
+                }
+            }
+            if msg.deleted_at_ms.is_some() {
+                spans.push(Span::styled(
+                    "  [deleted]".to_string(),
+                    Style::default()
+                        .fg(theme.subtle)
+                        .add_modifier(Modifier::ITALIC),
+                ));
+            }
+            if msg.edited_at_ms.is_some() {
+                spans.push(Span::styled(
+                    "  (edited)".to_string(),
+                    Style::default().fg(theme.muted),
+                ));
+            }
+            lines.push(Line::from(spans).style(line_style));
+        }
+
+        let para = ratatui::widgets::Paragraph::new(lines)
+            .scroll((self.scroll.offset_from_bottom, 0))
+            .style(Style::default().fg(theme.foreground).bg(theme.background));
+        frame.render_widget(para, area);
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
@@ -150,5 +225,13 @@ impl RoomTimelineBuffer {
             }
             _ => false,
         }
+    }
+}
+
+fn body_text(body: &spaze_proto::MessageBody) -> &str {
+    match body {
+        spaze_proto::MessageBody::Text { content }
+        | spaze_proto::MessageBody::System { content } => content,
+        _ => "",
     }
 }

@@ -28,3 +28,4 @@ serde_json.workspace = true
 uuid.workspace = true
 ratatui.workspace = true
 crossterm.workspace = true
+chrono.workspace = true
