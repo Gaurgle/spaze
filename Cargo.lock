@@ -682,7 +682,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-client"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -698,15 +698,15 @@ dependencies = [
 
 [[package]]
 name = "spaze-commands"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "spaze-crypto"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "spaze-proto"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -716,7 +716,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-server"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-storage"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "strsim"
