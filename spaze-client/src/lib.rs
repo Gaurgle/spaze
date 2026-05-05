@@ -115,10 +115,13 @@ pub async fn run(config: ClientConfig) -> Result<()> {
             }
             terminal.draw(|f| tui::draw(f, &mut app))?;
         }
-        let _ = sink.send(WsMessage::Close(None)).await;
         Ok(())
     }
     .await;
+
+    // Best-effort Close frame, run unconditionally so an inner-loop error
+    // (e.g., handle_key WS write failure) doesn't skip it.
+    let _ = sink.send(WsMessage::Close(None)).await;
 
     tui::teardown(terminal)?;
 
