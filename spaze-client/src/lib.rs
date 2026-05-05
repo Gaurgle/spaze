@@ -18,6 +18,7 @@ pub mod buffers;
 pub mod identity;
 pub mod render;
 pub mod theme;
+pub mod tui;
 
 /// Configuration for the client connection.
 #[derive(Debug, Clone)]
