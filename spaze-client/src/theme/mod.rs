@@ -39,6 +39,9 @@ pub struct Theme {
     pub tab_special: Color,
     pub tab_unread: Color,
 
-    // for syntect (Phase 4)
+    /// Name passed to syntect's loaded `ThemeSet` for code-block highlighting.
+    /// Phase 4 must bundle a matching `.tmTheme` file — Catppuccin themes
+    /// are NOT in syntect's default theme set, so the loader will need to
+    /// pull one in via `ThemeSet::load_from_reader` from a bundled asset.
     pub syntect_theme_name: &'static str,
 }

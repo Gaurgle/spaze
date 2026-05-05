@@ -21,7 +21,7 @@ pub const CATPPUCCIN_MOCHA: Theme = Theme {
     primary: Color::Rgb(0xcb, 0xa6, 0xf7), // mauve
     success: Color::Rgb(0xa6, 0xe3, 0xa1), // green
     warning: Color::Rgb(0xf9, 0xe2, 0xaf), // yellow
-    error: Color::Rgb(0xf3, 0x8b, 0xa8),   // pink
+    error: Color::Rgb(0xf3, 0x8b, 0xa8),   // red
     info: Color::Rgb(0x89, 0xb4, 0xfa),    // blue
 
     // chat-specific
