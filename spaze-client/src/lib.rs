@@ -155,26 +155,24 @@ where
             KeyCode::Esc => {
                 app.mode = InputMode::Normal;
             }
-            KeyCode::Enter => {
-                if !app.input_buffer.is_empty() {
-                    let frame = ClientFrame {
-                        request_id: RequestId(request_counter.fetch_add(1, Ordering::Relaxed)),
-                        command: ClientCommand::PostMessage {
-                            room_id: config.room_id,
-                            author_id: config.user_id,
-                            author_device_id: config.device_id,
-                            author_display_name: config.display_name.clone(),
-                            body: MessageBody::Text {
-                                content: app.input_buffer.clone(),
-                            },
+            KeyCode::Enter if !app.input_buffer.is_empty() => {
+                let frame = ClientFrame {
+                    request_id: RequestId(request_counter.fetch_add(1, Ordering::Relaxed)),
+                    command: ClientCommand::PostMessage {
+                        room_id: config.room_id,
+                        author_id: config.user_id,
+                        author_device_id: config.device_id,
+                        author_display_name: config.display_name.clone(),
+                        body: MessageBody::Text {
+                            content: app.input_buffer.clone(),
                         },
-                    };
-                    let json = serde_json::to_string(&frame).context("serialize ClientFrame")?;
-                    sink.send(WsMessage::Text(json))
-                        .await
-                        .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
-                    app.input_buffer.clear();
-                }
+                    },
+                };
+                let json = serde_json::to_string(&frame).context("serialize ClientFrame")?;
+                sink.send(WsMessage::Text(json))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
+                app.input_buffer.clear();
             }
             KeyCode::Backspace => {
                 app.input_buffer.pop();
