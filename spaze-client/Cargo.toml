@@ -26,3 +26,6 @@ clap.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
+ratatui.workspace = true
+crossterm.workspace = true
+chrono.workspace = true

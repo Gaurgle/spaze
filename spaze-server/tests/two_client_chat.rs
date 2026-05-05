@@ -75,6 +75,7 @@ async fn two_clients_can_chat() -> Result<()> {
             room_id: room,
             author_id: a_user,
             author_device_id: a_device,
+            author_display_name: "andreas".to_string(),
             body: MessageBody::Text {
                 content: "hello".to_string(),
             },
@@ -128,6 +129,7 @@ async fn two_clients_can_chat() -> Result<()> {
             room_id: room,
             author_id: b_user,
             author_device_id: b_device,
+            author_display_name: "beth".to_string(),
             body: MessageBody::Text {
                 content: "hi back".to_string(),
             },
@@ -226,6 +228,7 @@ async fn invalid_json_returns_invalid_request_without_dropping_connection() -> R
             room_id: RoomId::from_uuid(Uuid::nil()),
             author_id: derive_identity("test").0,
             author_device_id: derive_identity("test").1,
+            author_display_name: "test".to_string(),
             body: MessageBody::Text {
                 content: "still here".to_string(),
             },

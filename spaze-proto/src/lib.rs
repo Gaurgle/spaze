@@ -68,6 +68,7 @@ mod tests {
             room_id: RoomId::new(),
             author_id: UserId::new(),
             author_device_id: DeviceId::new(),
+            author_display_name: "alice".to_string(),
             created_at_ms: 1_700_000_000_000,
             edited_at_ms: None,
             deleted_at_ms: None,
@@ -93,6 +94,7 @@ mod tests {
             room_id: RoomId::new(),
             author_id: UserId::new(),
             author_device_id: DeviceId::new(),
+            author_display_name: "alice".to_string(),
             created_at_ms: 1_700_000_000_000,
             edited_at_ms: Some(1_700_000_500_000),
             deleted_at_ms: None,
@@ -139,6 +141,7 @@ mod tests {
             room_id: RoomId::new(),
             author_id: UserId::new(),
             author_device_id: DeviceId::new(),
+            author_display_name: "alice".to_string(),
             created_at_ms: 1_700_000_000_000,
             edited_at_ms: None,
             deleted_at_ms: None,
@@ -174,6 +177,7 @@ mod tests {
                 room_id: RoomId::new(),
                 author_id: UserId::new(),
                 author_device_id: DeviceId::new(),
+                author_display_name: "alice".to_string(),
                 body: MessageBody::Text {
                     content: "hi".into(),
                 },
@@ -201,6 +205,7 @@ mod tests {
             room_id: RoomId::new(),
             author_id: user,
             author_device_id: device,
+            author_display_name: "alice".to_string(),
             body: MessageBody::Text {
                 content: "hello".into(),
             },
@@ -227,6 +232,54 @@ mod tests {
             }
             other => panic!("wrong variant: {other:?}"),
         }
+    }
+
+    #[test]
+    fn post_message_carries_display_name() {
+        let cmd = ClientCommand::PostMessage {
+            room_id: RoomId::new(),
+            author_id: UserId::new(),
+            author_device_id: DeviceId::new(),
+            author_display_name: "andreas".to_string(),
+            body: MessageBody::Text {
+                content: "hi".into(),
+            },
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert!(
+            json.contains("\"author_display_name\":\"andreas\""),
+            "display name missing in {json}"
+        );
+        let parsed: ClientCommand = serde_json::from_str(&json).unwrap();
+        match parsed {
+            ClientCommand::PostMessage {
+                author_display_name,
+                ..
+            } => {
+                assert_eq!(author_display_name, "andreas");
+            }
+            other => panic!("wrong variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn message_carries_display_name() {
+        let msg = Message {
+            id: MessageId::new(),
+            room_id: RoomId::new(),
+            author_id: UserId::new(),
+            author_device_id: DeviceId::new(),
+            author_display_name: "beth".to_string(),
+            created_at_ms: 1_700_000_000_000,
+            edited_at_ms: None,
+            deleted_at_ms: None,
+            body: MessageBody::Text {
+                content: "hello".into(),
+            },
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: Message = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.author_display_name, "beth");
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 A terminal-first, project-centric team collaboration tool. Self-hostable, open source, GitHub-authenticated.
 
-> **Status:** pre-alpha. Phase 1.A complete — bare WS chat works in two terminals. TUI, theming, slash commands, auth still ahead.
+> **Status:** pre-alpha. Phase 1.B complete — real TUI with Catppuccin Mocha theme, two terminals chat with author names. Slash commands and auth still ahead.
 
 ## Why?
 
@@ -37,7 +37,7 @@ Requires Rust 1.85 or newer.
 cargo build --workspace
 ```
 
-## Running (Phase 1.A bare-WS demo)
+## Running (Phase 1.B bare-WS TUI demo)
 
 Three terminals — one server, two clients:
 
@@ -52,7 +52,9 @@ cargo run --bin spaze -- --name andreas
 cargo run --bin spaze -- --name beth
 ```
 
-Type a line in either client; both terminals will see it. Author shows as the first 8 hex chars of the UUIDv5-derived UserId. Ctrl+C exits cleanly.
+Each client opens an alt-screen TUI with sidebar (server + room), tab strip, room header, message timeline, and input box. Press `i` to enter Insert mode, type a message, press Enter to send. `Esc` returns to Normal mode. `Tab` cycles tabs (room ↔ help). `Ctrl+B` toggles the sidebar. `?` opens the help buffer. `Ctrl+C` quits cleanly. `q` also quits.
+
+Authors render as their display names (the `--name` value) in `<andreas>` style. Catppuccin Mocha is the theme.
 
 ## Documentation
 

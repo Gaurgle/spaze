@@ -19,6 +19,7 @@ pub struct Message {
     pub room_id: RoomId,
     pub author_id: UserId,
     pub author_device_id: DeviceId,
+    pub author_display_name: String,
     /// Unix timestamp in milliseconds (server-assigned at post time).
     pub created_at_ms: i64,
     /// Server-assigned timestamp of the most recent edit, if any.
