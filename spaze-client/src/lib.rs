@@ -13,6 +13,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use tracing::{info, warn};
 
+pub mod app;
 pub mod buffers;
 pub mod identity;
 pub mod render;
