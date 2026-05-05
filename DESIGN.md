@@ -20,15 +20,16 @@ Spaze takes architectural cues from **WeeChat** (buffer abstraction, slash comma
 - **Workspace members:** `spaze-proto`, `spaze-crypto`, `spaze-storage`, `spaze-server`, `spaze-client`, `spaze-commands`
 - **Stance:** Fully open source, self-hostable. Hosted/managed offering deferred indefinitely.
 
-## Three-level hierarchy
+## Two-level hierarchy
 
 | Level | What it is | Identity | Wire-level type |
 |-------|-----------|----------|-----------------|
-| **Server** | A running `spaze-server` daemon (one machine, one URL) | hostname + port | not a wire ID — connect by URL |
-| **Space** | A project workspace inside a server (multi-Space per server supported) | UUIDv7 | `SpaceId` |
-| **Room** | A conversation channel inside a Space, optionally repo-bound | UUIDv7 | `RoomId` |
+| **Server (= Space)** | A running `spaze-server` daemon — one URL = one project workspace | hostname + port | `SpaceId` (always 1-per-server in practice; retained as a wire type for forward compatibility) |
+| **Room** | A conversation channel inside the server, optionally repo-bound | UUIDv7 | `RoomId` |
 
-DMs are modeled as Rooms with `kind = direct` and exactly two members. Presented in a separate "Direct messages" UX category, not mixed with project rooms.
+DMs are Rooms with `kind = direct` and exactly two members. UI presents them in a separate "Direct messages" subgroup beneath each server.
+
+If a deployment wants two project workspaces, they run two `spaze-server` instances (Mastodon-style: instance == community). Multi-Space-per-server was considered and dropped — the protocol keeps `SpaceId` for future flexibility, but the UI / UX flattens to two levels.
 
 ## Architecture Principles
 
@@ -236,7 +237,7 @@ Requires true-color (24-bit) terminal — modern terminals (Alacritty, Kitty, We
 
 | Phase | Week | Deliverable |
 |-------|------|-------------|
-| 1 | 1 | Workspace, `spaze-proto`, server + client skeletons, buffer abstraction, slash command parser, theming scaffold, single hardcoded Space/Room, plaintext WebSocket — two terminals chat. **Decomposed into 1.A (bare WS chat ✅), 1.B (TUI + buffer + theming), 1.C (slash commands).** |
+| 1 | 1 | Workspace, `spaze-proto`, server + client skeletons, buffer abstraction, slash command parser, theming scaffold, single hardcoded Space/Room, plaintext WebSocket — two terminals chat. **Decomposed: 1.A (bare WS chat ✅), 1.B (TUI + buffer + theming ✅), 1.C (slash commands).** |
 | 2 | 2 | SQLite persistence, multi-Space + multi-Room, room join/leave, reconnection catch-up via cursor protocol, TLS, **first-run configuration assistant** |
 | 3 | 3 | GitHub OAuth Device Flow, per-device Ed25519 keypairs, keychain + `token-cmd`, refresh/session tokens, roles, **bootstrap admin invite-token flow** |
 | 4 | 4 | Region-based mouse dispatch, full input model (vim + mouse + arrows + buttons + hover cursor), buffer-index quick jump, syntect, pulldown-cmark, **theming complete (8 built-ins + user-loadable)** |
@@ -252,7 +253,7 @@ Phase 1 was decomposed during brainstorming into three sub-projects, each with i
 | Sub-project | Status | Spec | Plan |
 |---|---|---|---|
 | 1.A — WS round-trip MVP | ✅ shipped | `2026-05-04-phase-1a-ws-mvp-design.md` | `2026-05-04-phase-1a-ws-mvp.md` |
-| 1.B — TUI shell + buffer + theming scaffold | not yet planned | — | — |
+| 1.B — TUI shell + buffer + theming scaffold | ✅ shipped | `2026-05-05-phase-1b-tui-shell-design.md` | `2026-05-05-phase-1b-tui-shell.md` |
 | 1.C — Slash command parser | not yet planned | — | — |
 
 ## Roadmap (post-1.0)
