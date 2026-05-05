@@ -332,4 +332,181 @@ mod tests {
         assert_ne!(t.tab_unread, default);
         assert!(!t.syntect_theme_name.is_empty());
     }
+
+    #[test]
+    fn app_initializes_with_two_buffers() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".to_string(),
+        };
+        let app = App::new(identity, "ws://localhost".to_string());
+        assert_eq!(app.buffers.len(), 2);
+        assert_eq!(app.active, 0);
+        assert!(matches!(app.buffers[0], Buffer::Room(_)));
+        assert!(matches!(app.buffers[1], Buffer::Help(_)));
+    }
+
+    #[test]
+    fn room_buffer_push_message_appends() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".to_string(),
+            RoomKind::Standard,
+            "self".to_string(),
+        );
+        assert_eq!(rb.messages.len(), 0);
+        let msg = Message {
+            id: MessageId::new(),
+            room_id: rb.room_id,
+            author_id: UserId::new(),
+            author_device_id: DeviceId::new(),
+            author_display_name: "alice".to_string(),
+            created_at_ms: 0,
+            edited_at_ms: None,
+            deleted_at_ms: None,
+            body: MessageBody::Text {
+                content: "hi".into(),
+            },
+        };
+        rb.push_message(msg);
+        assert_eq!(rb.messages.len(), 1);
+    }
+
+    #[test]
+    fn room_buffer_scroll_sticks_to_bottom_on_new_message() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".to_string(),
+            RoomKind::Standard,
+            "self".to_string(),
+        );
+        let room_id = rb.room_id;
+        let make_msg = |content: &str| Message {
+            id: MessageId::new(),
+            room_id,
+            author_id: UserId::new(),
+            author_device_id: DeviceId::new(),
+            author_display_name: "alice".to_string(),
+            created_at_ms: 0,
+            edited_at_ms: None,
+            deleted_at_ms: None,
+            body: MessageBody::Text {
+                content: content.into(),
+            },
+        };
+
+        rb.push_message(make_msg("a"));
+        assert_eq!(rb.scroll.offset_from_bottom, 0);
+
+        // User scrolls up.
+        rb.scroll.page_up();
+        assert!(rb.scroll.offset_from_bottom > 0);
+        assert!(!rb.scroll.stuck_to_bottom);
+
+        // New message arrives — viewport stays put (user has scrolled).
+        let prior = rb.scroll.offset_from_bottom;
+        rb.push_message(make_msg("b"));
+        assert_eq!(rb.scroll.offset_from_bottom, prior);
+
+        // User returns to bottom.
+        rb.scroll.to_bottom();
+        assert_eq!(rb.scroll.offset_from_bottom, 0);
+        assert!(rb.scroll.stuck_to_bottom);
+
+        // New message sticks to bottom.
+        rb.push_message(make_msg("c"));
+        assert_eq!(rb.scroll.offset_from_bottom, 0);
+    }
+
+    #[test]
+    fn tab_cycle_wraps_around() {
+        use super::app::{App, Identity};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".to_string(),
+        };
+        let mut app = App::new(identity, "ws://localhost".to_string());
+        assert_eq!(app.active, 0);
+        app.cycle_tab_forward();
+        assert_eq!(app.active, 1);
+        app.cycle_tab_forward();
+        assert_eq!(app.active, 0);
+        app.cycle_tab_backward();
+        assert_eq!(app.active, 1);
+        app.cycle_tab_backward();
+        assert_eq!(app.active, 0);
+    }
+
+    #[test]
+    fn help_buffer_scrolls_with_jk_and_arrows() {
+        use super::buffers::HelpBuffer;
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut hb = HelpBuffer::new();
+        assert_eq!(hb.scroll, 0);
+
+        hb.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        assert_eq!(hb.scroll, 1);
+        hb.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        assert_eq!(hb.scroll, 2);
+        hb.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(hb.scroll, 1);
+        hb.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+        assert_eq!(hb.scroll, 0);
+        // Saturates at 0.
+        hb.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(hb.scroll, 0);
+    }
+
+    #[test]
+    fn app_input_mode_transitions() {
+        use super::app::{App, Identity, InputMode};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".to_string(),
+        };
+        let mut app = App::new(identity, "ws://localhost".to_string());
+        assert_eq!(app.mode, InputMode::Normal);
+
+        app.mode = InputMode::Insert;
+        app.input_buffer.push_str("hello");
+        app.mode = InputMode::Normal;
+        assert_eq!(app.input_buffer, "hello"); // preserved across mode swap
+    }
+
+    #[test]
+    fn mention_detection_uses_self_display_name() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+
+        let rb = RoomTimelineBuffer::new(
+            spaze_proto::RoomId::new(),
+            "# test".to_string(),
+            RoomKind::Standard,
+            "andreas".to_string(),
+        );
+        let needle = format!("@{}", rb.self_display_name).to_lowercase();
+        assert!(
+            "Hello @andreas, how's it going"
+                .to_lowercase()
+                .contains(&needle)
+        );
+        assert!(!"hello world".to_lowercase().contains(&needle));
+    }
 }
