@@ -138,6 +138,7 @@ pub async fn run(config: ClientConfig) -> Result<()> {
 /// # Errors
 ///
 /// Returns an error if serializing or sending a `ClientFrame` over the WS sink fails.
+#[allow(clippy::too_many_lines)] // Insert-mode dispatch covers all InputKind variants + WS writes
 async fn handle_key<S>(
     key: KeyEvent,
     app: &mut App,
@@ -156,23 +157,69 @@ where
                 app.mode = InputMode::Normal;
             }
             KeyCode::Enter if !app.input_buffer.is_empty() => {
-                let frame = ClientFrame {
-                    request_id: RequestId(request_counter.fetch_add(1, Ordering::Relaxed)),
-                    command: ClientCommand::PostMessage {
-                        room_id: config.room_id,
-                        author_id: config.user_id,
-                        author_device_id: config.device_id,
-                        author_display_name: config.display_name.clone(),
-                        body: MessageBody::Text {
-                            content: app.input_buffer.clone(),
-                        },
-                    },
-                };
-                let json = serde_json::to_string(&frame).context("serialize ClientFrame")?;
-                sink.send(WsMessage::Text(json))
-                    .await
-                    .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
-                app.input_buffer.clear();
+                use spaze_commands::{Effect, HandlerContext, InputKind, REGISTRY, lookup, parse_input};
+
+                let kind = parse_input(&app.input_buffer);
+                match kind {
+                    InputKind::Text(content) | InputKind::EscapedText(content) => {
+                        let frame = ClientFrame {
+                            request_id: RequestId(request_counter.fetch_add(1, Ordering::Relaxed)),
+                            command: ClientCommand::PostMessage {
+                                room_id: config.room_id,
+                                author_id: config.user_id,
+                                author_device_id: config.device_id,
+                                author_display_name: config.display_name.clone(),
+                                body: MessageBody::Text { content },
+                            },
+                        };
+                        let json = serde_json::to_string(&frame).context("serialize ClientFrame")?;
+                        sink.send(WsMessage::Text(json))
+                            .await
+                            .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
+                        app.input_buffer.clear();
+                    }
+                    InputKind::Command { name, args } => {
+                        let Some(cmd) = lookup(&name, REGISTRY) else {
+                            // Registry miss — leave input in bar, no submission,
+                            // no system line. The visual red color was the feedback.
+                            return Ok(());
+                        };
+                        let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+                        let ctx = HandlerContext { registry: REGISTRY };
+                        let effects = (cmd.handler)(&arg_refs, &ctx);
+                        for effect in effects {
+                            match effect {
+                                Effect::SendActionMessage(content) => {
+                                    if !matches!(app.connection, ConnectionState::Connected { .. }) {
+                                        app.apply_effect(Effect::SystemLine(
+                                            "not connected — /me requires an active connection".into(),
+                                        ));
+                                        continue;
+                                    }
+                                    let frame = ClientFrame {
+                                        request_id: RequestId(
+                                            request_counter.fetch_add(1, Ordering::Relaxed),
+                                        ),
+                                        command: ClientCommand::PostMessage {
+                                            room_id: config.room_id,
+                                            author_id: config.user_id,
+                                            author_device_id: config.device_id,
+                                            author_display_name: config.display_name.clone(),
+                                            body: MessageBody::Action { content },
+                                        },
+                                    };
+                                    let json = serde_json::to_string(&frame)
+                                        .context("serialize ClientFrame")?;
+                                    sink.send(WsMessage::Text(json))
+                                        .await
+                                        .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
+                                }
+                                other => app.apply_effect(other),
+                            }
+                        }
+                        app.input_buffer.clear();
+                    }
+                }
             }
             KeyCode::Backspace => {
                 app.input_buffer.pop();
