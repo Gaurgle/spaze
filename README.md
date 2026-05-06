@@ -2,7 +2,7 @@
 
 A terminal-first, project-centric team collaboration tool. Self-hostable, open source, GitHub-authenticated.
 
-> **Status:** pre-alpha. Phase 1.B complete — real TUI with Catppuccin Mocha theme, two terminals chat with author names. Slash commands and auth still ahead.
+> **Status:** pre-alpha. Phase 1.C shipped 2026-05-06 — slash command parser with `/quit`, `/help`, `/me`, `/clear`, live input coloring (green/red while typing), `MessageBody::Action` proto variant, and `spaze-commands` crate. 91 tests cumulative. Phase 1.B complete — real TUI with Catppuccin Mocha theme, two terminals chat with author names.
 
 ## Why?
 
