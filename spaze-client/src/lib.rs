@@ -157,7 +157,9 @@ where
                 app.mode = InputMode::Normal;
             }
             KeyCode::Enter if !app.input_buffer.is_empty() => {
-                use spaze_commands::{Effect, HandlerContext, InputKind, REGISTRY, lookup, parse_input};
+                use spaze_commands::{
+                    Effect, HandlerContext, InputKind, REGISTRY, lookup, parse_input,
+                };
 
                 let kind = parse_input(&app.input_buffer);
                 match kind {
@@ -172,7 +174,8 @@ where
                                 body: MessageBody::Text { content },
                             },
                         };
-                        let json = serde_json::to_string(&frame).context("serialize ClientFrame")?;
+                        let json =
+                            serde_json::to_string(&frame).context("serialize ClientFrame")?;
                         sink.send(WsMessage::Text(json))
                             .await
                             .map_err(|e| anyhow::anyhow!("ws sink write: {e}"))?;
@@ -190,9 +193,11 @@ where
                         for effect in effects {
                             match effect {
                                 Effect::SendActionMessage(content) => {
-                                    if !matches!(app.connection, ConnectionState::Connected { .. }) {
+                                    if !matches!(app.connection, ConnectionState::Connected { .. })
+                                    {
                                         app.apply_effect(Effect::SystemLine(
-                                            "not connected — /me requires an active connection".into(),
+                                            "not connected — /me requires an active connection"
+                                                .into(),
                                         ));
                                         continue;
                                     }
@@ -596,7 +601,9 @@ mod tests {
                 created_at_ms: 0,
                 edited_at_ms: None,
                 deleted_at_ms: None,
-                body: MessageBody::Text { content: "a".into() },
+                body: MessageBody::Text {
+                    content: "a".into(),
+                },
             });
             rb.push_message(Message {
                 id: MessageId::new(),
@@ -607,7 +614,9 @@ mod tests {
                 created_at_ms: 0,
                 edited_at_ms: None,
                 deleted_at_ms: None,
-                body: MessageBody::Text { content: "b".into() },
+                body: MessageBody::Text {
+                    content: "b".into(),
+                },
             });
         }
         app.apply_effect(Effect::ClearActiveBuffer);
@@ -782,7 +791,9 @@ mod tests {
                     created_at_ms: 0,
                     edited_at_ms: None,
                     deleted_at_ms: None,
-                    body: MessageBody::Text { content: content.into() },
+                    body: MessageBody::Text {
+                        content: content.into(),
+                    },
                 });
             }
         }

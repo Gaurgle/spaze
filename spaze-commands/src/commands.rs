@@ -46,7 +46,10 @@ pub fn handle_help(args: &[&str], ctx: &HandlerContext) -> Vec<Effect> {
     // Strip a leading slash if the user typed `/help /me`.
     let target = args[0].trim_start_matches('/');
     match lookup(target, ctx.registry) {
-        Some(cmd) => vec![Effect::SystemLine(format!("/{}: {}", cmd.name, cmd.long_help))],
+        Some(cmd) => vec![Effect::SystemLine(format!(
+            "/{}: {}",
+            cmd.name, cmd.long_help
+        ))],
         None => vec![Effect::SystemLine(format!("unknown command: /{target}"))],
     }
 }
@@ -142,10 +145,7 @@ mod tests {
         let effects = handle_help(&[], &ctx);
         // Header + one line per command = 1 + 2 = 3 effects.
         assert_eq!(effects.len(), 3);
-        assert_eq!(
-            effects[0],
-            Effect::SystemLine("available commands:".into())
-        );
+        assert_eq!(effects[0], Effect::SystemLine("available commands:".into()));
         assert_eq!(
             effects[1],
             Effect::SystemLine("  /quit — exit the client".into())
