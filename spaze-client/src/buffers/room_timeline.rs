@@ -184,6 +184,21 @@ impl RoomTimelineBuffer {
                         Style::default().fg(dim_fg).add_modifier(Modifier::ITALIC),
                     ));
                 }
+                MessageBody::Action { content } => {
+                    // Action shape: replace the timestamp + chevron-author
+                    // spans that the prior code already pushed with the
+                    // `* author content` shape (italic body, no chevrons).
+                    spans.clear();
+                    spans.push(Span::styled(format!("{ts}  "), Style::default().fg(ts_fg)));
+                    spans.push(Span::styled(
+                        format!("* {author_display} "),
+                        Style::default().fg(author_fg).add_modifier(Modifier::BOLD),
+                    ));
+                    spans.push(Span::styled(
+                        content.clone(),
+                        Style::default().fg(body_fg).add_modifier(Modifier::ITALIC),
+                    ));
+                }
                 _ => {
                     // MessageBody is non_exhaustive; future variants render as raw debug.
                     spans.push(Span::styled(
@@ -236,10 +251,21 @@ impl RoomTimelineBuffer {
     }
 }
 
-fn body_text(body: &spaze_proto::MessageBody) -> &str {
+/// Extract the user-visible text from any text-bearing body variant. Used
+/// by mention detection. New variants added to `MessageBody` should be
+/// covered here if they carry user-typed content.
+pub(crate) fn body_text(body: &spaze_proto::MessageBody) -> &str {
     match body {
         spaze_proto::MessageBody::Text { content }
-        | spaze_proto::MessageBody::System { content } => content,
+        | spaze_proto::MessageBody::System { content }
+        | spaze_proto::MessageBody::Action { content } => content,
         _ => "",
     }
+}
+
+/// Test helper — re-exports `body_text` so unit tests in the client crate
+/// can call it.
+#[cfg(test)]
+pub fn body_text_for_test(body: &spaze_proto::MessageBody) -> &str {
+    body_text(body)
 }
