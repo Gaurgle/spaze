@@ -1008,11 +1008,13 @@ dependencies = [
  "futures-util",
  "ratatui",
  "serde_json",
+ "spaze-commands",
  "spaze-proto",
  "tokio",
  "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
+ "unicode-width 0.2.0",
  "uuid",
 ]
 
