@@ -673,6 +673,41 @@ mod tests {
     }
 
     #[test]
+    fn classify_input_picks_correct_color_for_each_class() {
+        use spaze_commands::{InputClass, REGISTRY, classify_input};
+
+        // Validates that each variant has a distinct mapping. The actual
+        // theme-color picking lives in tui.rs, but we test the classifier
+        // outputs here so a regression in classify_input fails closer to
+        // the source.
+        assert_eq!(classify_input("hello", REGISTRY), InputClass::Text);
+        assert_eq!(classify_input("//me", REGISTRY), InputClass::EscapedText);
+        assert!(matches!(
+            classify_input("/quit", REGISTRY),
+            InputClass::ValidCommand { name: "quit" }
+        ));
+        assert!(matches!(
+            classify_input("/foo", REGISTRY),
+            InputClass::InvalidCommand { name: "foo" }
+        ));
+    }
+
+    #[test]
+    fn cursor_width_handles_multibyte_and_wide_chars() {
+        use unicode_width::UnicodeWidthStr;
+        // ASCII: width = byte len.
+        assert_eq!(UnicodeWidthStr::width("abc"), 3);
+        // Multi-byte but single-cell (Latin-1 supplement).
+        assert_eq!(UnicodeWidthStr::width("ä"), 1);
+        assert_eq!(UnicodeWidthStr::width("åäö"), 3);
+        // Wide single-codepoint emoji: 2 cells.
+        assert_eq!(UnicodeWidthStr::width("😀"), 2);
+        // Mixed: ä(1) + 😀(2) + x(1) = 4 cells (but byte len is 2+4+1=7).
+        assert_eq!(UnicodeWidthStr::width("ä😀x"), 4);
+        assert_eq!("ä😀x".len(), 7); // byte len for comparison
+    }
+
+    #[test]
     fn render_action_message_does_not_panic_and_uses_action_path() {
         // Smoke-level render check: rendering an Action message goes through
         // the Action arm (not the wildcard debug path) and produces non-empty

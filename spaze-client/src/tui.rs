@@ -370,6 +370,8 @@ fn draw_room_header(frame: &mut Frame, area: Rect, app: &App) {
 fn draw_input(frame: &mut Frame, area: Rect, app: &App) {
     use ratatui::style::{Modifier, Style};
     use ratatui::text::{Line, Span};
+    use spaze_commands::{InputClass, REGISTRY, classify_input};
+    use unicode_width::UnicodeWidthStr;
 
     let theme = &app.theme;
     let prompt = match app.mode {
@@ -381,24 +383,33 @@ fn draw_input(frame: &mut Frame, area: Rect, app: &App) {
                 .add_modifier(Modifier::BOLD),
         ),
     };
-    let body = Span::styled(
-        app.input_buffer.clone(),
-        Style::default().fg(theme.foreground),
-    );
-    let cursor = if matches!(app.mode, crate::app::InputMode::Insert) {
-        Span::styled(
-            "_",
-            Style::default()
-                .fg(theme.primary)
-                .add_modifier(Modifier::SLOW_BLINK),
-        )
-    } else {
-        Span::raw("")
+
+    // Live-color the input body based on what the user is typing.
+    let class = classify_input(&app.input_buffer, REGISTRY);
+    let fg = match class {
+        InputClass::Text | InputClass::EscapedText => theme.foreground,
+        InputClass::ValidCommand { .. } => theme.success,
+        InputClass::InvalidCommand { .. } => theme.error,
     };
 
-    let line = Line::from(vec![prompt, body, cursor]);
+    let body = Span::styled(app.input_buffer.clone(), Style::default().fg(fg));
+
+    let line = Line::from(vec![prompt, body]);
     let para = Paragraph::new(line).style(Style::default().bg(theme.surface));
     frame.render_widget(para, area);
+
+    // In Insert mode, place the terminal cursor after the prompt (2 cells) and
+    // after the input text. Use display-cell width, not byte length, so
+    // multi-byte and wide characters are counted correctly.
+    if matches!(app.mode, crate::app::InputMode::Insert) {
+        let prompt_width: u16 = 2; // "› " is always 2 display cells
+        let input_width =
+            u16::try_from(UnicodeWidthStr::width(app.input_buffer.as_str())).unwrap_or(u16::MAX);
+        let cursor_col = prompt_width.saturating_add(input_width);
+        let max_col = area.right().saturating_sub(1);
+        let col = (area.x + cursor_col).min(max_col);
+        frame.set_cursor_position((col, area.y));
+    }
 }
 
 fn draw_statusbar(frame: &mut Frame, area: Rect, app: &App) {
