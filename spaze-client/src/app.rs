@@ -92,8 +92,8 @@ impl App {
     /// state changes. The wire-level send for `SendActionMessage` is *not*
     /// performed here — it requires async access to the WS sink, so the
     /// caller (`handle_key`) does that part. This method covers the
-    /// synchronous, App-state-only effects: Quit, ClearActiveBuffer,
-    /// SystemLine. For `SendActionMessage`, see `handle_key`'s Insert-mode
+    /// synchronous, App-state-only effects: `Quit`, `ClearActiveBuffer`,
+    /// `SystemLine`. For `SendActionMessage`, see `handle_key`'s Insert-mode
     /// branch in `lib.rs`.
     pub fn apply_effect(&mut self, effect: Effect) {
         match effect {
@@ -143,7 +143,7 @@ impl App {
             return;
         }
         // Active buffer isn't a room — fall back to the first room buffer.
-        for buf in self.buffers.iter_mut() {
+        for buf in &mut self.buffers {
             if let Buffer::Room(rb) = buf {
                 rb.push_message(msg);
                 return;

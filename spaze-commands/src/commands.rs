@@ -25,7 +25,7 @@ pub fn handle_me(args: &[&str], _ctx: &HandlerContext) -> Vec<Effect> {
     vec![Effect::SendActionMessage(args.join(" "))]
 }
 
-/// `/help` — list commands. `/help <name>` — show long_help for one.
+/// `/help` — list commands. `/help <name>` — show `long_help` for one.
 ///
 /// Output is one `Effect::SystemLine` per visual line. Each line becomes its
 /// own synthetic Message in the buffer; we don't embed `\n` and rely on the

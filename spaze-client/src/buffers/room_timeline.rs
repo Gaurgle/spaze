@@ -266,6 +266,7 @@ pub(crate) fn body_text(body: &spaze_proto::MessageBody) -> &str {
 /// Test helper — re-exports `body_text` so unit tests in the client crate
 /// can call it.
 #[cfg(test)]
+#[must_use]
 pub fn body_text_for_test(body: &spaze_proto::MessageBody) -> &str {
     body_text(body)
 }

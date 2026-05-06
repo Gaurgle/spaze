@@ -160,10 +160,10 @@ mod tests {
     fn real_registry_aliases_dont_collide() {
         // No alias may equal another command's canonical name or another
         // command's alias.
-        for cmd in REGISTRY.iter() {
+        for cmd in REGISTRY {
             for alias in cmd.aliases {
                 // Not equal to any name except its own command's name.
-                for other in REGISTRY.iter() {
+                for other in REGISTRY {
                     if other.name == cmd.name {
                         continue;
                     }
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn real_registry_every_command_has_help_text() {
-        for cmd in REGISTRY.iter() {
+        for cmd in REGISTRY {
             assert!(!cmd.name.is_empty(), "command has empty name");
             assert!(
                 !cmd.short_help.is_empty(),
