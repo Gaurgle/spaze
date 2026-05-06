@@ -39,4 +39,6 @@ pub enum MessageBody {
     Text { content: String },
     /// A server-generated system event rendered inline (joins, renames, etc.).
     System { content: String },
+    /// An action message (the `/me` command). Renders as `* {author} {content}`.
+    Action { content: String },
 }
