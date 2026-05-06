@@ -224,6 +224,7 @@ impl RoomTimelineBuffer {
 
         let para = ratatui::widgets::Paragraph::new(lines)
             .scroll((self.scroll.offset_from_bottom, 0))
+            .wrap(ratatui::widgets::Wrap { trim: false })
             .style(Style::default().fg(theme.foreground).bg(theme.background));
         frame.render_widget(para, area);
     }
