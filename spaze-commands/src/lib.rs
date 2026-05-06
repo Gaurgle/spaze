@@ -22,6 +22,6 @@ pub mod registry;
 // - parser::{InputClass, InputKind, classify_input, parse_input} — Task 5
 // - registry::{Command, Handler, HandlerContext, REGISTRY, lookup} — Task 6
 //
-// pub use effect::Effect;
+pub use effect::Effect;
 // pub use parser::{InputClass, InputKind, classify_input, parse_input};
 // pub use registry::{Command, Handler, HandlerContext, REGISTRY, lookup};
