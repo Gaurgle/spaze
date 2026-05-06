@@ -257,7 +257,9 @@ async fn invalid_json_returns_invalid_request_without_dropping_connection() -> R
 async fn me_action_message_roundtrips_between_two_clients() -> Result<()> {
     // 1. Spawn the server (same pattern as `two_clients_can_chat`).
     let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
-    let listener = tokio::net::TcpListener::bind(bind_addr).await.context("bind")?;
+    let listener = tokio::net::TcpListener::bind(bind_addr)
+        .await
+        .context("bind")?;
     let actual_addr = listener.local_addr()?;
     let server_url = format!("ws://{actual_addr}/");
 
@@ -328,7 +330,9 @@ async fn me_action_message_roundtrips_between_two_clients() -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn me_with_utf8_content_roundtrips_intact() -> Result<()> {
     let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
-    let listener = tokio::net::TcpListener::bind(bind_addr).await.context("bind")?;
+    let listener = tokio::net::TcpListener::bind(bind_addr)
+        .await
+        .context("bind")?;
     let actual_addr = listener.local_addr()?;
     let server_url = format!("ws://{actual_addr}/");
 

@@ -90,7 +90,10 @@ mod parse_tests {
 
     #[test]
     fn plain_text_is_text() {
-        assert_eq!(parse_input("hello world"), InputKind::Text("hello world".into()));
+        assert_eq!(
+            parse_input("hello world"),
+            InputKind::Text("hello world".into())
+        );
     }
 
     #[test]
@@ -111,10 +114,7 @@ mod parse_tests {
 
     #[test]
     fn triple_slash_is_escaped_text_with_one_slash_stripped() {
-        assert_eq!(
-            parse_input("///me"),
-            InputKind::EscapedText("//me".into())
-        );
+        assert_eq!(parse_input("///me"), InputKind::EscapedText("//me".into()));
     }
 
     #[test]
@@ -177,8 +177,8 @@ mod parse_tests {
 #[cfg(test)]
 mod classify_tests {
     use super::*;
-    use crate::registry::{Command, HandlerContext};
     use crate::effect::Effect;
+    use crate::registry::{Command, HandlerContext};
 
     fn fixture_handler(_a: &[&str], _c: &HandlerContext) -> Vec<Effect> {
         vec![]
@@ -215,18 +215,12 @@ mod classify_tests {
 
     #[test]
     fn slash_mid_line_is_text() {
-        assert_eq!(
-            classify_input("hello /world", &fixture()),
-            InputClass::Text
-        );
+        assert_eq!(classify_input("hello /world", &fixture()), InputClass::Text);
     }
 
     #[test]
     fn whitespace_before_slash_is_text() {
-        assert_eq!(
-            classify_input("   /quit", &fixture()),
-            InputClass::Text
-        );
+        assert_eq!(classify_input("   /quit", &fixture()), InputClass::Text);
     }
 
     #[test]

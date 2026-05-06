@@ -18,4 +18,4 @@ pub mod registry;
 
 pub use effect::Effect;
 pub use parser::{InputClass, InputKind, classify_input, parse_input};
-pub use registry::{Command, Handler, HandlerContext, lookup, REGISTRY};
+pub use registry::{Command, Handler, HandlerContext, REGISTRY, lookup};
