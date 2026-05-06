@@ -1,6 +1,7 @@
 //! App state machine — top-level state for the TUI client.
 
-use spaze_proto::{DeviceId, RoomId, UserId};
+use spaze_commands::Effect;
+use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
 use uuid::Uuid;
 
 use crate::buffers::{Buffer, HelpBuffer, RoomTimelineBuffer, room_timeline::RoomKind};
@@ -85,5 +86,68 @@ impl App {
     /// Find the index of a buffer by predicate.
     pub fn find_buffer<F: Fn(&Buffer) -> bool>(&self, pred: F) -> Option<usize> {
         self.buffers.iter().position(pred)
+    }
+
+    /// Apply a command effect. The single mutation point for command-driven
+    /// state changes. The wire-level send for `SendActionMessage` is *not*
+    /// performed here — it requires async access to the WS sink, so the
+    /// caller (`handle_key`) does that part. This method covers the
+    /// synchronous, App-state-only effects: Quit, ClearActiveBuffer,
+    /// SystemLine. For `SendActionMessage`, see `handle_key`'s Insert-mode
+    /// branch in `lib.rs`.
+    pub fn apply_effect(&mut self, effect: Effect) {
+        match effect {
+            Effect::Quit => {
+                self.should_quit = true;
+            }
+            Effect::ClearActiveBuffer => {
+                if let Some(Buffer::Room(rb)) = self.buffers.get_mut(self.active) {
+                    rb.messages.clear();
+                    rb.scroll.to_bottom();
+                }
+            }
+            Effect::SystemLine(content) => {
+                self.push_local_system(content);
+            }
+            Effect::SendActionMessage(_) => {
+                // Wire-level effect; handled in `handle_key` where the WS
+                // sink is in scope. Reaching here means the caller forgot
+                // to filter — log and drop, don't panic.
+                tracing::warn!(
+                    "App::apply_effect received SendActionMessage; \
+                     should be handled by caller before dispatch"
+                );
+            }
+        }
+    }
+
+    /// Push a synthetic `MessageBody::System` message onto the active buffer
+    /// (whichever it is). Locally generated, never sent over the wire,
+    /// never persisted.
+    fn push_local_system(&mut self, content: String) {
+        let msg = Message {
+            id: MessageId::from_uuid(Uuid::nil()),
+            room_id: RoomId::from_uuid(Uuid::nil()),
+            author_id: UserId::from_uuid(Uuid::nil()),
+            author_device_id: DeviceId::from_uuid(Uuid::nil()),
+            author_display_name: "spaze".into(),
+            created_at_ms: chrono::Utc::now().timestamp_millis(),
+            edited_at_ms: None,
+            deleted_at_ms: None,
+            body: MessageBody::System { content },
+        };
+        // For 1.C, system lines always render on the active room buffer if
+        // one exists; HelpBuffer doesn't have a timeline.
+        if let Some(Buffer::Room(rb)) = self.buffers.get_mut(self.active) {
+            rb.push_message(msg);
+            return;
+        }
+        // Active buffer isn't a room — fall back to the first room buffer.
+        for buf in self.buffers.iter_mut() {
+            if let Buffer::Room(rb) = buf {
+                rb.push_message(msg);
+                return;
+            }
+        }
     }
 }
