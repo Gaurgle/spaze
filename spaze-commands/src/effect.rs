@@ -20,7 +20,7 @@ pub enum Effect {
     SystemLine(String),
 
     /// Send an action message (`/me <content>`) to the server. The client
-    /// constructs the full `PostMessage` from app state (room_id, author, etc.).
+    /// constructs the full [`PostMessage`] from app state (`room_id`, author, etc.).
     SendActionMessage(String),
 }
 
