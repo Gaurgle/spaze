@@ -507,4 +507,95 @@ mod tests {
         );
         assert!(!"hello world".to_lowercase().contains(&needle));
     }
+
+    #[test]
+    fn apply_effect_quit_sets_should_quit_flag() {
+        use super::app::{App, Identity};
+        use spaze_commands::Effect;
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert!(!app.should_quit);
+        app.apply_effect(Effect::Quit);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn apply_effect_clear_empties_active_room_buffer() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use spaze_commands::Effect;
+        use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        // Push a couple of messages onto the active room buffer.
+        if let Buffer::Room(rb) = &mut app.buffers[0] {
+            rb.push_message(Message {
+                id: MessageId::new(),
+                room_id: RoomId::new(),
+                author_id: UserId::new(),
+                author_device_id: DeviceId::new(),
+                author_display_name: "x".into(),
+                created_at_ms: 0,
+                edited_at_ms: None,
+                deleted_at_ms: None,
+                body: MessageBody::Text { content: "a".into() },
+            });
+            rb.push_message(Message {
+                id: MessageId::new(),
+                room_id: RoomId::new(),
+                author_id: UserId::new(),
+                author_device_id: DeviceId::new(),
+                author_display_name: "x".into(),
+                created_at_ms: 0,
+                edited_at_ms: None,
+                deleted_at_ms: None,
+                body: MessageBody::Text { content: "b".into() },
+            });
+        }
+        app.apply_effect(Effect::ClearActiveBuffer);
+        if let Buffer::Room(rb) = &app.buffers[0] {
+            assert_eq!(rb.messages.len(), 0);
+        } else {
+            panic!("expected room buffer");
+        }
+    }
+
+    #[test]
+    fn apply_effect_systemline_appends_local_system_message() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use spaze_commands::Effect;
+        use spaze_proto::{DeviceId, MessageBody, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        app.apply_effect(Effect::SystemLine("usage: /me <text>".into()));
+
+        if let Buffer::Room(rb) = &app.buffers[0] {
+            assert_eq!(rb.messages.len(), 1);
+            match &rb.messages[0].body {
+                MessageBody::System { content } => {
+                    assert_eq!(content, "usage: /me <text>");
+                }
+                other => panic!("expected System body, got {other:?}"),
+            }
+        } else {
+            panic!("expected room buffer");
+        }
+    }
 }
