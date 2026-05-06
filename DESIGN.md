@@ -254,7 +254,8 @@ Phase 1 was decomposed during brainstorming into three sub-projects, each with i
 |---|---|---|---|
 | 1.A — WS round-trip MVP | ✅ shipped | `2026-05-04-phase-1a-ws-mvp-design.md` | `2026-05-04-phase-1a-ws-mvp.md` |
 | 1.B — TUI shell + buffer + theming scaffold | ✅ shipped | `2026-05-05-phase-1b-tui-shell-design.md` | `2026-05-05-phase-1b-tui-shell.md` |
-| 1.C — Slash command parser | not yet planned | — | — |
+| 1.C — Slash command parser | ✅ shipped | `2026-05-06-phase-1c-slash-commands-design.md` | `2026-05-06-phase-1c-slash-commands.md` |
+| 1.D — Sidebar navigation | not yet planned | — | — |
 
 ## Roadmap (post-1.0)
 
