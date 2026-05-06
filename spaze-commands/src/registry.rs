@@ -34,6 +34,41 @@ pub fn lookup<'a>(name: &str, registry: &'a [Command]) -> Option<&'a Command> {
         .find(|c| c.name == name || c.aliases.contains(&name))
 }
 
+use crate::commands::{handle_clear, handle_help, handle_me, handle_quit};
+
+/// The static slash command registry. Adding a command in 1.C+ is one new
+/// entry here plus the handler in `commands.rs`.
+pub static REGISTRY: &[Command] = &[
+    Command {
+        name: "quit",
+        aliases: &["q"],
+        short_help: "exit the client",
+        long_help: "/quit — exit the Spaze client cleanly. Closes the WS connection and restores the terminal.",
+        handler: handle_quit,
+    },
+    Command {
+        name: "help",
+        aliases: &["h"],
+        short_help: "list commands or show help for one",
+        long_help: "/help — list all commands. /help <name> — show detailed help for a specific command.",
+        handler: handle_help,
+    },
+    Command {
+        name: "me",
+        aliases: &[],
+        short_help: "send an action message",
+        long_help: "/me <action text> — send your message as an action (rendered as '* yourname text' in the timeline).",
+        handler: handle_me,
+    },
+    Command {
+        name: "clear",
+        aliases: &["cls"],
+        short_help: "clear the current buffer's timeline",
+        long_help: "/clear — empty the active buffer's local timeline. Session-local; messages are not re-fetched on reconnect (no scrollback yet).",
+        handler: handle_clear,
+    },
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,5 +131,73 @@ mod tests {
         let reg = fixture();
         let ctx = HandlerContext { registry: &reg };
         assert_eq!(ctx.registry.len(), 2);
+    }
+
+    #[test]
+    fn real_registry_has_four_commands() {
+        // Sanity: 1.C ships exactly /quit, /help, /me, /clear.
+        assert_eq!(REGISTRY.len(), 4);
+        let names: Vec<_> = REGISTRY.iter().map(|c| c.name).collect();
+        assert!(names.contains(&"quit"));
+        assert!(names.contains(&"help"));
+        assert!(names.contains(&"me"));
+        assert!(names.contains(&"clear"));
+    }
+
+    #[test]
+    fn real_registry_no_duplicate_names() {
+        let mut names: Vec<_> = REGISTRY.iter().map(|c| c.name).collect();
+        names.sort_unstable();
+        let dedup_len = {
+            let mut d = names.clone();
+            d.dedup();
+            d.len()
+        };
+        assert_eq!(names.len(), dedup_len, "duplicate command names: {names:?}");
+    }
+
+    #[test]
+    fn real_registry_aliases_dont_collide() {
+        // No alias may equal another command's canonical name or another
+        // command's alias.
+        for cmd in REGISTRY.iter() {
+            for alias in cmd.aliases {
+                // Not equal to any name except its own command's name.
+                for other in REGISTRY.iter() {
+                    if other.name == cmd.name {
+                        continue;
+                    }
+                    assert_ne!(
+                        *alias, other.name,
+                        "alias {alias:?} of /{} collides with name /{}",
+                        cmd.name, other.name
+                    );
+                    for other_alias in other.aliases {
+                        assert_ne!(
+                            alias, other_alias,
+                            "alias {alias:?} of /{} collides with alias {other_alias:?} of /{}",
+                            cmd.name, other.name
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn real_registry_every_command_has_help_text() {
+        for cmd in REGISTRY.iter() {
+            assert!(!cmd.name.is_empty(), "command has empty name");
+            assert!(
+                !cmd.short_help.is_empty(),
+                "/{} has empty short_help",
+                cmd.name
+            );
+            assert!(
+                !cmd.long_help.is_empty(),
+                "/{} has empty long_help",
+                cmd.name
+            );
+        }
     }
 }
