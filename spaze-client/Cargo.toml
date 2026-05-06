@@ -17,6 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 spaze-proto = { path = "../spaze-proto" }
+spaze-commands = { path = "../spaze-commands" }
 tokio.workspace = true
 tokio-tungstenite.workspace = true
 futures-util.workspace = true
@@ -29,3 +30,4 @@ uuid.workspace = true
 ratatui.workspace = true
 crossterm.workspace = true
 chrono.workspace = true
+unicode-width.workspace = true
