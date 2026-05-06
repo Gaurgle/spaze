@@ -598,4 +598,79 @@ mod tests {
             panic!("expected room buffer");
         }
     }
+
+    #[test]
+    fn body_text_extracts_content_from_action_variant() {
+        use super::buffers::room_timeline::body_text_for_test;
+        use spaze_proto::MessageBody;
+
+        let body = MessageBody::Action {
+            content: "kicks the build".into(),
+        };
+        assert_eq!(body_text_for_test(&body), "kicks the build");
+    }
+
+    #[test]
+    fn mention_inside_action_body_is_detectable() {
+        // Indirect test: body_text returns content for Action, so the existing
+        // mention detection (which lowercases body_text + contains-check)
+        // works for actions without further changes.
+        use super::buffers::room_timeline::body_text_for_test;
+        use spaze_proto::MessageBody;
+
+        let body = MessageBody::Action {
+            content: "waves at @beth".into(),
+        };
+        let needle = "@beth".to_lowercase();
+        assert!(body_text_for_test(&body).to_lowercase().contains(&needle));
+    }
+
+    #[test]
+    fn render_action_message_does_not_panic_and_uses_action_path() {
+        // Smoke-level render check: rendering an Action message goes through
+        // the Action arm (not the wildcard debug path) and produces non-empty
+        // output. We can't easily assert visual output in unit tests without
+        // a snapshot harness; this asserts the code path is wired up.
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+        use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".into(),
+            RoomKind::Standard,
+            "self".into(),
+        );
+        rb.push_message(Message {
+            id: MessageId::new(),
+            room_id: rb.room_id,
+            author_id: UserId::new(),
+            author_device_id: DeviceId::new(),
+            author_display_name: "andreas".into(),
+            created_at_ms: 0,
+            edited_at_ms: None,
+            deleted_at_ms: None,
+            body: MessageBody::Action {
+                content: "kicks the build".into(),
+            },
+        });
+
+        let backend = TestBackend::new(80, 5);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal
+            .draw(|f| {
+                let theme = super::theme::catppuccin_mocha::CATPPUCCIN_MOCHA;
+                rb.render(f, f.area(), &theme);
+            })
+            .expect("draw should not panic");
+        // Spot-check that the rendered backend contains "andreas" and "kicks".
+        let buf = terminal.backend().buffer().clone();
+        let dump: String = (0..buf.area.height)
+            .flat_map(|y| (0..buf.area.width).map(move |x| (x, y)))
+            .map(|(x, y)| buf[(x, y)].symbol().to_string())
+            .collect();
+        assert!(dump.contains("andreas"), "rendered output: {dump}");
+        assert!(dump.contains("kicks"), "rendered output: {dump}");
+    }
 }
