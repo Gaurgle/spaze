@@ -83,7 +83,7 @@ mod tests {
         assert_eq!(parsed.deleted_at_ms, None);
         match parsed.body {
             MessageBody::Text { content } => assert_eq!(content, "hello world"),
-            other @ MessageBody::System { .. } => panic!("wrong body variant: {other:?}"),
+            other => panic!("wrong body variant: {other:?}"),
         }
     }
 
@@ -350,5 +350,43 @@ mod tests {
             parsed,
             ServerFrame::Event(ServerEvent::Typing { .. })
         ));
+    }
+
+    #[test]
+    fn action_body_serde_roundtrip() {
+        let body = MessageBody::Action {
+            content: "kicks the build".into(),
+        };
+        let json = serde_json::to_string(&body).expect("serialize Action");
+        let parsed: MessageBody = serde_json::from_str(&json).expect("parse Action");
+        match parsed {
+            MessageBody::Action { content } => assert_eq!(content, "kicks the build"),
+            other => panic!("wrong body variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn action_body_utf8_roundtrip() {
+        let body = MessageBody::Action {
+            content: "waves at åse 🐧".into(),
+        };
+        let json = serde_json::to_string(&body).expect("serialize Action UTF-8");
+        let parsed: MessageBody = serde_json::from_str(&json).expect("parse Action UTF-8");
+        match parsed {
+            MessageBody::Action { content } => assert_eq!(content, "waves at åse 🐧"),
+            other => panic!("wrong body variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn action_body_uses_action_kind_tag() {
+        // The serde tag is "kind" with snake_case rename, so the JSON shape
+        // must literally contain `"kind":"action"` to keep the wire format stable.
+        let body = MessageBody::Action {
+            content: "pings".into(),
+        };
+        let json = serde_json::to_string(&body).expect("serialize");
+        assert!(json.contains(r#""kind":"action""#), "got: {json}");
+        assert!(json.contains(r#""content":"pings""#), "got: {json}");
     }
 }
