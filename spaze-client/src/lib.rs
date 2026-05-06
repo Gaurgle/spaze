@@ -755,4 +755,64 @@ mod tests {
         assert!(dump.contains("andreas"), "rendered output: {dump}");
         assert!(dump.contains("kicks"), "rendered output: {dump}");
     }
+
+    #[test]
+    fn clear_command_empties_active_buffer_only() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use spaze_commands::Effect;
+        use spaze_proto::{DeviceId, Message, MessageBody, MessageId, RoomId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+
+        // Push messages onto the room buffer.
+        if let Buffer::Room(rb) = &mut app.buffers[0] {
+            for content in ["a", "b", "c"] {
+                rb.push_message(Message {
+                    id: MessageId::new(),
+                    room_id: RoomId::new(),
+                    author_id: UserId::new(),
+                    author_device_id: DeviceId::new(),
+                    author_display_name: "x".into(),
+                    created_at_ms: 0,
+                    edited_at_ms: None,
+                    deleted_at_ms: None,
+                    body: MessageBody::Text { content: content.into() },
+                });
+            }
+        }
+        // Apply ClearActiveBuffer.
+        app.apply_effect(Effect::ClearActiveBuffer);
+        if let Buffer::Room(rb) = &app.buffers[0] {
+            assert_eq!(rb.messages.len(), 0, "active buffer should be empty");
+        }
+    }
+
+    #[test]
+    fn quit_command_sets_should_quit_through_handler_chain() {
+        use super::app::{App, Identity};
+        use spaze_commands::{HandlerContext, REGISTRY, lookup};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert!(!app.should_quit);
+
+        let cmd = lookup("quit", REGISTRY).expect("/quit must be in registry");
+        let ctx = HandlerContext { registry: REGISTRY };
+        let effects = (cmd.handler)(&[], &ctx);
+        for effect in effects {
+            app.apply_effect(effect);
+        }
+        assert!(app.should_quit);
+    }
 }

@@ -325,6 +325,71 @@ async fn me_action_message_roundtrips_between_two_clients() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn me_with_utf8_content_roundtrips_intact() -> Result<()> {
+    let bind_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
+    let listener = tokio::net::TcpListener::bind(bind_addr).await.context("bind")?;
+    let actual_addr = listener.local_addr()?;
+    let server_url = format!("ws://{actual_addr}/");
+
+    let state = spaze_server::ServerState::new();
+    let _server_handle = {
+        let state = state.clone();
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, peer)) = listener.accept().await else {
+                    return;
+                };
+                let conn_id = spaze_server::ConnectionId(
+                    state
+                        .next_connection_id
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                );
+                let s = state.clone();
+                tokio::spawn(async move {
+                    spaze_server::connection::handle_connection(stream, s, conn_id, peer).await;
+                });
+            }
+        })
+    };
+
+    let (a_user, a_device) = derive_identity("andreas");
+    let (mut a_ws, _) = tokio_tungstenite::connect_async(&server_url)
+        .await
+        .context("a connect")?;
+    let (mut b_ws, _) = tokio_tungstenite::connect_async(&server_url)
+        .await
+        .context("b connect")?;
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let frame = ClientFrame {
+        request_id: RequestId(1),
+        command: ClientCommand::PostMessage {
+            room_id: RoomId::from_uuid(Uuid::nil()),
+            author_id: a_user,
+            author_device_id: a_device,
+            author_display_name: "andreas".into(),
+            body: MessageBody::Action {
+                content: "waves at åse 🐧".into(),
+            },
+        },
+    };
+    a_ws.send(WsMessage::Text(serde_json::to_string(&frame)?))
+        .await
+        .context("a send")?;
+
+    let server_frame = next_server_frame(&mut b_ws).await?;
+    let ServerFrame::Event(ServerEvent::MessagePosted(m)) = server_frame else {
+        return Err(anyhow!("expected Event MessagePosted"));
+    };
+    let MessageBody::Action { content } = m.body else {
+        return Err(anyhow!("expected Action body"));
+    };
+    assert_eq!(content, "waves at åse 🐧");
+    Ok(())
+}
+
 /// Read the next text frame from a WS connection and parse it as `ServerFrame`.
 async fn next_server_frame(
     ws: &mut tokio_tungstenite::WebSocketStream<
