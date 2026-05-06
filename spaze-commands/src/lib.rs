@@ -16,12 +16,6 @@ pub mod effect;
 pub mod parser;
 pub mod registry;
 
-// NOTE: pub use lines commented out pending Tasks 4-10 which add the symbols.
-// Uncomment as each module gains its implementation:
-// - effect::{Effect} — Task 4
-// - parser::{InputClass, InputKind, classify_input, parse_input} — Task 5
-// - registry::{Command, Handler, HandlerContext, REGISTRY, lookup} — Task 6
-//
 pub use effect::Effect;
-pub use parser::{InputKind, parse_input};
+pub use parser::{InputClass, InputKind, classify_input, parse_input};
 pub use registry::{Command, Handler, HandlerContext, lookup, REGISTRY};
