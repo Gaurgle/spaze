@@ -1,6 +1,47 @@
 //! Input parsing: `classify_input` (per-keystroke, zero-alloc) and
 //! `parse_input` (per-Enter, allocates owned strings).
 
+use crate::registry::Command;
+
+/// Per-keystroke classification of the input buffer. Allocates nothing —
+/// the `name` field borrows from the input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputClass<'a> {
+    /// Plain text (no `/` prefix, or whitespace before the prefix).
+    Text,
+    /// Escaped text (input started with `//`). Will be sent as text with one
+    /// leading slash stripped.
+    EscapedText,
+    /// First token after `/` matched a registry entry by name or alias.
+    ValidCommand { name: &'a str },
+    /// First token after `/` did NOT match. Includes bare `/` (empty name).
+    InvalidCommand { name: &'a str },
+}
+
+/// Classify the input buffer for the live-coloring path. Cheap enough to
+/// call on every keystroke.
+#[must_use]
+pub fn classify_input<'a>(input: &'a str, registry: &[Command]) -> InputClass<'a> {
+    if input.starts_with("//") {
+        return InputClass::EscapedText;
+    }
+    let Some(rest) = input.strip_prefix('/') else {
+        return InputClass::Text;
+    };
+    let name = rest.split_whitespace().next().unwrap_or("");
+    if name.is_empty() {
+        return InputClass::InvalidCommand { name };
+    }
+    if registry
+        .iter()
+        .any(|c| c.name == name || c.aliases.contains(&name))
+    {
+        InputClass::ValidCommand { name }
+    } else {
+        InputClass::InvalidCommand { name }
+    }
+}
+
 /// Result of parsing the input buffer at Enter time. Owned strings so the
 /// caller can clear `app.input_buffer` immediately after dispatch.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,6 +170,126 @@ mod parse_tests {
                 name: "me".into(),
                 args: vec!["waves".into(), "at".into(), "åse".into(), "🐧".into()],
             }
+        );
+    }
+}
+
+#[cfg(test)]
+mod classify_tests {
+    use super::*;
+    use crate::registry::{Command, HandlerContext};
+    use crate::effect::Effect;
+
+    fn fixture_handler(_a: &[&str], _c: &HandlerContext) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn fixture() -> [Command; 2] {
+        [
+            Command {
+                name: "quit",
+                aliases: &["q"],
+                short_help: "x",
+                long_help: "x",
+                handler: fixture_handler,
+            },
+            Command {
+                name: "me",
+                aliases: &[],
+                short_help: "x",
+                long_help: "x",
+                handler: fixture_handler,
+            },
+        ]
+    }
+
+    #[test]
+    fn empty_is_text() {
+        assert_eq!(classify_input("", &fixture()), InputClass::Text);
+    }
+
+    #[test]
+    fn plain_text_is_text() {
+        assert_eq!(classify_input("hello", &fixture()), InputClass::Text);
+    }
+
+    #[test]
+    fn slash_mid_line_is_text() {
+        assert_eq!(
+            classify_input("hello /world", &fixture()),
+            InputClass::Text
+        );
+    }
+
+    #[test]
+    fn whitespace_before_slash_is_text() {
+        assert_eq!(
+            classify_input("   /quit", &fixture()),
+            InputClass::Text
+        );
+    }
+
+    #[test]
+    fn double_slash_is_escaped_text() {
+        assert_eq!(
+            classify_input("//me kicks", &fixture()),
+            InputClass::EscapedText
+        );
+    }
+
+    #[test]
+    fn registry_hit_by_name_is_valid() {
+        assert_eq!(
+            classify_input("/quit", &fixture()),
+            InputClass::ValidCommand { name: "quit" }
+        );
+    }
+
+    #[test]
+    fn registry_hit_by_alias_is_valid() {
+        assert_eq!(
+            classify_input("/q", &fixture()),
+            InputClass::ValidCommand { name: "q" }
+        );
+    }
+
+    #[test]
+    fn registry_hit_with_args_uses_command_name_only() {
+        assert_eq!(
+            classify_input("/me kicks the build", &fixture()),
+            InputClass::ValidCommand { name: "me" }
+        );
+    }
+
+    #[test]
+    fn registry_miss_is_invalid() {
+        assert_eq!(
+            classify_input("/foo", &fixture()),
+            InputClass::InvalidCommand { name: "foo" }
+        );
+    }
+
+    #[test]
+    fn bare_slash_is_invalid_with_empty_name() {
+        assert_eq!(
+            classify_input("/", &fixture()),
+            InputClass::InvalidCommand { name: "" }
+        );
+    }
+
+    #[test]
+    fn slash_with_only_whitespace_is_invalid_with_empty_name() {
+        assert_eq!(
+            classify_input("/   ", &fixture()),
+            InputClass::InvalidCommand { name: "" }
+        );
+    }
+
+    #[test]
+    fn utf8_command_name_misses_registry_and_is_invalid() {
+        assert_eq!(
+            classify_input("/qüit", &fixture()),
+            InputClass::InvalidCommand { name: "qüit" }
         );
     }
 }
