@@ -2,16 +2,16 @@
 
 A terminal-first, project-centric team collaboration tool. Self-hostable, open source, GitHub-authenticated.
 
-> **Status:** pre-alpha. Phase 1.C shipped 2026-05-06 — slash command parser with `/quit`, `/help`, `/me`, `/clear`, live input coloring (green/red while typing), `MessageBody::Action` proto variant, and `spaze-commands` crate. 91 tests cumulative. Phase 1.B complete — real TUI with Catppuccin Mocha theme, two terminals chat with author names.
+> **Status:** pre-alpha. Phase 1.C shipped 2026-05-06: slash command parser with `/quit`, `/help`, `/me`, `/clear`, live input coloring (green/red while typing), `MessageBody::Action` proto variant, and `spaze-commands` crate. 91 tests cumulative. Phase 1.B complete: real TUI with Catppuccin Mocha theme, two terminals chat with author names.
 
 ## Why?
 
-Slack and Discord are great until you want to run your own. Mattermost and Rocket.Chat are heavyweight. Spaze aims to be a single static binary, easy to self-host, and pleasant to use from a terminal — with notes and todos as first-class artifacts captured inline through chat.
+Slack and Discord are great until you want to run your own. Mattermost and Rocket.Chat are heavyweight. Spaze aims to be a single static binary, easy to self-host, and pleasant to use from a terminal, with notes and todos as first-class artifacts captured inline through chat.
 
 ## Highlights
 
-- **Single static binary** for server and client — no runtime dependencies.
-- **GitHub OAuth Device Flow** for identity — no password store on the server.
+- **Single static binary** for server and client, no runtime dependencies.
+- **GitHub OAuth Device Flow** for identity, no password store on the server.
 - **TUI-first client** built with `ratatui`, mouse + vim + buttons all first-class peers.
 - **Inline `#note` and `#todo` capture** routed through the same parser as slash commands.
 - **Server-side full-text search** via SQLite FTS5.
@@ -39,7 +39,7 @@ cargo build --workspace
 
 ## Running (Phase 1.B bare-WS TUI demo)
 
-Three terminals — one server, two clients:
+Three terminals, one server, two clients:
 
 ```bash
 # Terminal 1
@@ -58,7 +58,7 @@ Authors render as their display names (the `--name` value) in `<andreas>` style.
 
 ## Documentation
 
-- [DESIGN.md](./DESIGN.md) — architecture, scope, and locked decisions.
+- [DESIGN.md](./DESIGN.md): architecture, scope, and locked decisions.
 - `LICENSE-APACHE` - Apache 2.0.
 
 ## Contributing
