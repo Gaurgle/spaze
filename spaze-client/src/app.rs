@@ -27,6 +27,15 @@ pub struct Identity {
     pub display_name: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedRegion {
+    Sidebar,
+    Tabs,
+    Buffer,
+    Input,
+    // Future: Popup (Phase 2's first-run assistant)
+}
+
 pub struct App {
     pub buffers: Vec<Buffer>,
     pub active: usize,
@@ -37,6 +46,8 @@ pub struct App {
     pub connection: ConnectionState,
     pub identity: Identity,
     pub should_quit: bool,
+    pub focus: FocusedRegion,
+    pub sidebar_selected: Option<usize>,
 }
 
 impl App {
@@ -61,6 +72,8 @@ impl App {
             connection: ConnectionState::Connecting,
             identity,
             should_quit: false,
+            focus: FocusedRegion::Sidebar,
+            sidebar_selected: Some(0),
         }
     }
 
