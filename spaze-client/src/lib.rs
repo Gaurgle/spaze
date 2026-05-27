@@ -71,14 +71,15 @@ pub async fn run(config: ClientConfig) -> Result<()> {
                         Some(Ok(CrosstermEvent::Key(key))) => {
                             handle_key(key, &mut app, &mut sink, &config, &request_counter).await?;
                         }
-                        // Resize triggers redraw at end of loop. Mouse/paste/focus
-                        // events are ignored in 1.B.
+                        Some(Ok(CrosstermEvent::Mouse(mouse))) => {
+                            handle_mouse(mouse, &mut app);
+                        }
+                        // Resize triggers redraw at end of loop. Paste/focus events ignored.
                         Some(Ok(_)) => {}
                         Some(Err(err)) => {
                             warn!("crossterm event error: {err}");
                         }
                         None => {
-                            // event stream ended (terminal closed)
                             app.should_quit = true;
                         }
                     }
@@ -150,6 +151,8 @@ where
     S: SinkExt<WsMessage> + Unpin,
     <S as futures_util::Sink<WsMessage>>::Error: std::fmt::Display,
 {
+    use crate::app::FocusedRegion;
+
     // Insert mode: input box has focus.
     if matches!(app.mode, InputMode::Insert) {
         match key.code {
@@ -237,8 +240,10 @@ where
         return Ok(());
     }
 
-    // Normal mode: globals first, then per-buffer.
+    // Normal mode: globals first, then focus-based routing.
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+
+    // Global routes (regardless of focus).
     match (key.code, ctrl) {
         (KeyCode::Char('c'), true) | (KeyCode::Char('q'), false) => {
             app.should_quit = true;
@@ -246,14 +251,19 @@ where
         }
         (KeyCode::Char('b'), true) => {
             app.toggle_sidebar();
+            // Re-establish default focus based on visibility.
+            app.set_focus(if app.sidebar_visible {
+                FocusedRegion::Sidebar
+            } else {
+                FocusedRegion::Buffer
+            });
             return Ok(());
         }
         (KeyCode::Char('i'), false) => {
-            app.mode = InputMode::Insert;
+            app.set_focus(FocusedRegion::Input);
             return Ok(());
         }
         (KeyCode::Char('?'), false) => {
-            // Find help buffer, focus it.
             if let Some(idx) = app.find_buffer(|b| matches!(b, Buffer::Help(_))) {
                 app.active = idx;
             }
@@ -267,12 +277,79 @@ where
             app.cycle_tab_backward();
             return Ok(());
         }
+        // Global scroll keys → always forward to active buffer.
+        // Ctrl+u/d: half-page up/down. PageUp/Down/Home/End: page navigation.
+        (KeyCode::Char('u' | 'd'), true)
+        | (KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End, _) => {
+            let _ = app.buffers[app.active].handle_key(key);
+            return Ok(());
+        }
         _ => {}
     }
 
-    // Per-buffer.
-    let _ = app.buffers[app.active].handle_key(key);
+    // Focus-based routing for Up/Down/Left/Right/h/j/k/l/Enter.
+    match app.focus {
+        FocusedRegion::Sidebar => match key.code {
+            KeyCode::Up | KeyCode::Char('k') => app.sidebar_move_up(),
+            KeyCode::Down | KeyCode::Char('j') => app.sidebar_move_down(),
+            KeyCode::Enter => app.sidebar_activate(),
+            _ => {} // h, l, others: no-op in 1.D
+        },
+        FocusedRegion::Tabs => match key.code {
+            KeyCode::Left | KeyCode::Char('h') => app.cycle_tab_backward(),
+            KeyCode::Right | KeyCode::Char('l') => app.cycle_tab_forward(),
+            _ => {}
+        },
+        FocusedRegion::Buffer => {
+            let _ = app.buffers[app.active].handle_key(key);
+        }
+        FocusedRegion::Input => {
+            // Unreachable in Normal mode (Input focus only set during Insert mode).
+        }
+    }
     Ok(())
+}
+
+fn handle_mouse(mouse: crossterm::event::MouseEvent, app: &mut App) {
+    use crate::app::FocusedRegion;
+    use crate::tui::{MouseHit, region_at};
+    use crossterm::event::{MouseButton, MouseEventKind};
+
+    // Only handle left-button down. Other buttons / drag / scroll → ignored in 1.D.
+    if !matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left)) {
+        return;
+    }
+    let Some(layout) = &app.last_layout else {
+        return; // no render yet — drop event
+    };
+    let Some(hit) = region_at(mouse.column, mouse.row, layout) else {
+        return; // click on gutter / border / status
+    };
+    match hit {
+        MouseHit::Sidebar {
+            selected_buffer_idx,
+        } => {
+            app.set_focus(FocusedRegion::Sidebar);
+            if let Some(idx) = selected_buffer_idx {
+                app.sidebar_selected = Some(idx);
+                app.sidebar_activate();
+            }
+        }
+        MouseHit::Tab { buffer_idx } => {
+            app.set_focus(FocusedRegion::Tabs);
+            if buffer_idx < app.buffers.len() {
+                app.active = buffer_idx;
+            }
+        }
+        MouseHit::Buffer => {
+            app.set_focus(FocusedRegion::Buffer);
+            // No further action in 1.D.
+        }
+        MouseHit::Input => {
+            // set_focus(Input) also enters Insert mode via the invariant.
+            app.set_focus(FocusedRegion::Input);
+        }
+    }
 }
 
 fn handle_ws_text(text: &str, app: &mut App) {
