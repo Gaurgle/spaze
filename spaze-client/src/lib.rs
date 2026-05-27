@@ -766,6 +766,36 @@ mod tests {
     }
 
     #[test]
+    fn app_initial_focus_is_sidebar_when_sidebar_visible() {
+        use super::app::{App, FocusedRegion, Identity};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let app = App::new(identity, "ws://localhost".into());
+        assert!(app.sidebar_visible);
+        assert_eq!(app.focus, FocusedRegion::Sidebar);
+    }
+
+    #[test]
+    fn app_has_sidebar_selected_field_initialized_to_first_room() {
+        use super::app::{App, Identity};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let app = App::new(identity, "ws://localhost".into());
+        // The first Room buffer is at index 0 (Help is at index 1).
+        assert_eq!(app.sidebar_selected, Some(0));
+    }
+
+    #[test]
     fn clear_command_empties_active_buffer_only() {
         use super::app::{App, Identity};
         use super::buffers::Buffer;
