@@ -57,6 +57,32 @@ impl ScrollState {
         self.stuck_to_bottom = false;
     }
 
+    pub fn scroll_one_up(&mut self) {
+        self.offset_from_bottom = self.offset_from_bottom.saturating_add(1);
+        self.stuck_to_bottom = false;
+    }
+
+    pub fn scroll_one_down(&mut self) {
+        self.offset_from_bottom = self.offset_from_bottom.saturating_sub(1);
+        if self.offset_from_bottom == 0 {
+            self.stuck_to_bottom = true;
+        }
+    }
+
+    pub fn scroll_half_page_up(&mut self) {
+        // Half-page is 5 lines in 1.D (fixed). Phase 4 may make this
+        // viewport-relative once region rects are easier to pipe through.
+        self.offset_from_bottom = self.offset_from_bottom.saturating_add(5);
+        self.stuck_to_bottom = false;
+    }
+
+    pub fn scroll_half_page_down(&mut self) {
+        self.offset_from_bottom = self.offset_from_bottom.saturating_sub(5);
+        if self.offset_from_bottom == 0 {
+            self.stuck_to_bottom = true;
+        }
+    }
+
     pub fn stick_to_bottom_if_was(&mut self) {
         if self.stuck_to_bottom {
             self.offset_from_bottom = 0;
@@ -230,6 +256,8 @@ impl RoomTimelineBuffer {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
+        use crossterm::event::KeyModifiers;
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
             KeyCode::PageUp => {
                 self.scroll.page_up();
@@ -245,6 +273,22 @@ impl RoomTimelineBuffer {
             }
             KeyCode::End => {
                 self.scroll.to_bottom();
+                true
+            }
+            KeyCode::Up | KeyCode::Char('k') if !ctrl => {
+                self.scroll.scroll_one_up();
+                true
+            }
+            KeyCode::Down | KeyCode::Char('j') if !ctrl => {
+                self.scroll.scroll_one_down();
+                true
+            }
+            KeyCode::Char('u') if ctrl => {
+                self.scroll.scroll_half_page_up();
+                true
+            }
+            KeyCode::Char('d') if ctrl => {
+                self.scroll.scroll_half_page_down();
                 true
             }
             _ => false,

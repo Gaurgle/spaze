@@ -1031,4 +1031,77 @@ mod tests {
         app.sidebar_activate();
         assert_eq!(app.active, prior_active);
     }
+
+    #[test]
+    fn room_buffer_up_and_k_scroll_one_line_up() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use spaze_proto::RoomId;
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".into(),
+            RoomKind::Standard,
+            "self".into(),
+        );
+        rb.scroll.offset_from_bottom = 5;
+        rb.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(rb.scroll.offset_from_bottom, 6);
+        rb.handle_key(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+        assert_eq!(rb.scroll.offset_from_bottom, 7);
+    }
+
+    #[test]
+    fn room_buffer_down_and_j_scroll_one_line_down() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use spaze_proto::RoomId;
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".into(),
+            RoomKind::Standard,
+            "self".into(),
+        );
+        rb.scroll.offset_from_bottom = 5;
+        rb.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        assert_eq!(rb.scroll.offset_from_bottom, 4);
+        rb.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        assert_eq!(rb.scroll.offset_from_bottom, 3);
+    }
+
+    #[test]
+    fn room_buffer_ctrl_u_scrolls_half_page() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use spaze_proto::RoomId;
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".into(),
+            RoomKind::Standard,
+            "self".into(),
+        );
+        rb.scroll.offset_from_bottom = 0;
+        rb.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        // Half-page constant defaults to 5 lines (configurable later).
+        assert_eq!(rb.scroll.offset_from_bottom, 5);
+    }
+
+    #[test]
+    fn room_buffer_ctrl_d_scrolls_half_page() {
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use spaze_proto::RoomId;
+
+        let mut rb = RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# test".into(),
+            RoomKind::Standard,
+            "self".into(),
+        );
+        rb.scroll.offset_from_bottom = 10;
+        rb.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        assert_eq!(rb.scroll.offset_from_bottom, 5);
+    }
 }
