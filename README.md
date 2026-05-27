@@ -2,7 +2,7 @@
 
 A terminal-first, project-centric team collaboration tool. Self-hostable, open source, GitHub-authenticated.
 
-> **Status:** pre-alpha. Phase 1.C shipped 2026-05-06: slash command parser with `/quit`, `/help`, `/me`, `/clear`, live input coloring (green/red while typing), `MessageBody::Action` proto variant, and `spaze-commands` crate. 91 tests cumulative. Phase 1.B complete: real TUI with Catppuccin Mocha theme, two terminals chat with author names.
+> **Status:** pre-alpha. Phase 1.D shipped 2026-05-27. Sidebar navigation: arrow keys and `hjkl` drive sidebar selection, `Enter` activates a room, mouse clicks set focus and trigger region actions, buffers gain `Ctrl+u`/`Ctrl+d` half-page scroll. `FocusedRegion` enum + `LayoutRects` cache as forward infra for Phase 4. 113 tests cumulative. Phase 1.C shipped 2026-05-06: slash command parser with `/quit`, `/help`, `/me`, `/clear`, live input coloring (green/red while typing), `MessageBody::Action` proto variant, and `spaze-commands` crate. 91 tests cumulative. Phase 1.B complete: real TUI with Catppuccin Mocha theme, two terminals chat with author names.
 
 ## Why?
 
