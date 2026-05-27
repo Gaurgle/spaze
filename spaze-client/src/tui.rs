@@ -11,7 +11,7 @@ use std::io;
 
 use anyhow::{Context, Result};
 use crossterm::ExecutableCommand;
-use crossterm::event::DisableMouseCapture;
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
@@ -144,6 +144,9 @@ pub fn setup() -> Result<Tui> {
     stdout
         .execute(EnterAlternateScreen)
         .context("EnterAlternateScreen")?;
+    stdout
+        .execute(EnableMouseCapture)
+        .context("EnableMouseCapture")?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend).context("Terminal::new")?;
     Ok(terminal)
