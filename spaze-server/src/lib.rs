@@ -63,34 +63,38 @@ pub async fn run(config: ServerConfig) -> Result<()> {
     let actual_addr = listener.local_addr()?;
     info!("listening on {actual_addr}");
 
-    loop {
-        tokio::select! {
-            accept = listener.accept() => {
-                match accept {
-                    Ok((stream, peer)) => {
-                        let conn_id = ConnectionId(
-                            state
-                                .next_connection_id
-                                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                        );
-                        let state = Arc::clone(&state);
-                        tokio::spawn(async move {
-                            connection::handle_connection(stream, state, conn_id, peer).await;
-                        });
-                    }
-                    Err(err) => {
-                        warn!("accept failed: {err}");
-                    }
-                }
-            }
-            _ = tokio::signal::ctrl_c() => {
-                info!("shutting down");
-                break;
-            }
+    tokio::select! {
+        () = serve(listener, state) => {}
+        _ = tokio::signal::ctrl_c() => {
+            info!("shutting down");
         }
     }
 
     Ok(())
+}
+
+/// Accept connections forever, spawning a task per connection. Does not
+/// handle shutdown — the caller composes this with whatever shutdown
+/// trigger they want (Ctrl+C in `run`, dropping the spawn handle in tests).
+pub async fn serve(listener: TcpListener, state: Arc<ServerState>) {
+    loop {
+        match listener.accept().await {
+            Ok((stream, peer)) => {
+                let conn_id = ConnectionId(
+                    state
+                        .next_connection_id
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                );
+                let state = Arc::clone(&state);
+                tokio::spawn(async move {
+                    connection::handle_connection(stream, state, conn_id, peer).await;
+                });
+            }
+            Err(err) => {
+                warn!("accept failed: {err}");
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -33,28 +33,8 @@ async fn two_clients_can_chat() -> Result<()> {
     let actual_addr = listener.local_addr()?;
     let server_url = format!("ws://{actual_addr}/");
 
-    // We can't use spaze_server::run directly because it owns the listener
-    // creation. Replicate the server loop body here for the test.
     let state = spaze_server::ServerState::new();
-    let server_handle = {
-        let state = state.clone();
-        tokio::spawn(async move {
-            loop {
-                let Ok((stream, peer)) = listener.accept().await else {
-                    return;
-                };
-                let conn_id = spaze_server::ConnectionId(
-                    state
-                        .next_connection_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                );
-                let s = state.clone();
-                tokio::spawn(async move {
-                    spaze_server::connection::handle_connection(stream, s, conn_id, peer).await;
-                });
-            }
-        })
-    };
+    let server_handle = tokio::spawn(spaze_server::serve(listener, state));
 
     // 2. Connect two clients.
     let (mut a_ws, _) = tokio_tungstenite::connect_async(&server_url)
@@ -181,25 +161,7 @@ async fn invalid_json_returns_invalid_request_without_dropping_connection() -> R
     let server_url = format!("ws://{actual_addr}/");
 
     let state = spaze_server::ServerState::new();
-    let server_handle = {
-        let state = state.clone();
-        tokio::spawn(async move {
-            loop {
-                let Ok((stream, peer)) = listener.accept().await else {
-                    return;
-                };
-                let conn_id = spaze_server::ConnectionId(
-                    state
-                        .next_connection_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                );
-                let s = state.clone();
-                tokio::spawn(async move {
-                    spaze_server::connection::handle_connection(stream, s, conn_id, peer).await;
-                });
-            }
-        })
-    };
+    let server_handle = tokio::spawn(spaze_server::serve(listener, state));
 
     let (mut ws, _) = tokio_tungstenite::connect_async(&server_url).await?;
 
@@ -264,25 +226,7 @@ async fn me_action_message_roundtrips_between_two_clients() -> Result<()> {
     let server_url = format!("ws://{actual_addr}/");
 
     let state = spaze_server::ServerState::new();
-    let _server_handle = {
-        let state = state.clone();
-        tokio::spawn(async move {
-            loop {
-                let Ok((stream, peer)) = listener.accept().await else {
-                    return;
-                };
-                let conn_id = spaze_server::ConnectionId(
-                    state
-                        .next_connection_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                );
-                let s = state.clone();
-                tokio::spawn(async move {
-                    spaze_server::connection::handle_connection(stream, s, conn_id, peer).await;
-                });
-            }
-        })
-    };
+    let _server_handle = tokio::spawn(spaze_server::serve(listener, state));
 
     // 2. Connect two clients.
     let (a_user, a_device) = derive_identity("andreas");
@@ -337,25 +281,7 @@ async fn me_with_utf8_content_roundtrips_intact() -> Result<()> {
     let server_url = format!("ws://{actual_addr}/");
 
     let state = spaze_server::ServerState::new();
-    let _server_handle = {
-        let state = state.clone();
-        tokio::spawn(async move {
-            loop {
-                let Ok((stream, peer)) = listener.accept().await else {
-                    return;
-                };
-                let conn_id = spaze_server::ConnectionId(
-                    state
-                        .next_connection_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                );
-                let s = state.clone();
-                tokio::spawn(async move {
-                    spaze_server::connection::handle_connection(stream, s, conn_id, peer).await;
-                });
-            }
-        })
-    };
+    let _server_handle = tokio::spawn(spaze_server::serve(listener, state));
 
     let (a_user, a_device) = derive_identity("andreas");
     let (mut a_ws, _) = tokio_tungstenite::connect_async(&server_url)
