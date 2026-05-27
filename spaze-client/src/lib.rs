@@ -1211,4 +1211,34 @@ mod tests {
         // x=5, y=10 — sidebar is hidden, so this hits the buffer (which starts at x=0).
         assert_eq!(region_at(5, 10, &layout), Some(MouseHit::Buffer));
     }
+
+    #[test]
+    fn draw_populates_last_layout() {
+        use super::app::{App, Identity};
+        use super::tui::draw;
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert!(app.last_layout.is_none());
+
+        let backend = TestBackend::new(80, 20);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal.draw(|f| draw(f, &mut app)).expect("draw");
+
+        assert!(
+            app.last_layout.is_some(),
+            "draw should populate last_layout"
+        );
+        let layout = app.last_layout.as_ref().unwrap();
+        assert!(layout.sidebar.is_some(), "sidebar visible by default");
+        assert!(!layout.sidebar_items.is_empty(), "sidebar items recorded");
+        assert!(!layout.tab_items.is_empty(), "tab items recorded");
+    }
 }
