@@ -44,7 +44,6 @@ pub struct LayoutRects {
 /// Builder used during `draw()` to collect rects from each render helper
 /// into a final `LayoutRects`. Finalized after all renders complete.
 #[derive(Debug, Default)]
-#[allow(dead_code)] // Fields wired up in Task 9.
 pub(crate) struct LayoutRectsBuilder {
     pub sidebar: Option<Rect>,
     pub tabs: Option<Rect>,
@@ -58,7 +57,6 @@ pub(crate) struct LayoutRectsBuilder {
 }
 
 impl LayoutRectsBuilder {
-    #[allow(dead_code)] // Called in Task 9.
     pub(crate) fn build(self) -> Option<LayoutRects> {
         Some(LayoutRects {
             sidebar: self.sidebar,
@@ -175,8 +173,11 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let effective_min_cols = if need_sidebar { MIN_COLS } else { 50 };
     if area.width < effective_min_cols || area.height < MIN_ROWS {
         draw_too_small(frame, area, &app.theme);
+        app.last_layout = None;
         return;
     }
+
+    let mut builder = LayoutRectsBuilder::default();
 
     // Vertical: topbar (1) | middle (flex) | statusbar (1).
     let outer = Layout::default()
@@ -190,6 +191,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let top = outer[0];
     let middle = outer[1];
     let bottom = outer[2];
+
+    builder.topbar = Some(top);
+    builder.status = Some(bottom);
 
     // Horizontal in middle: optional sidebar | main.
     let (sidebar_area, main_area) = if app.sidebar_visible {
@@ -234,13 +238,17 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         (None, main_split[1], main_split[2])
     };
 
+    builder.tabs = Some(tabs_area);
+    builder.buffer = Some(buffer_area);
+    builder.input = Some(input_area);
+    builder.room_header = header_area;
+
     let theme = app.theme;
-    let mut builder = LayoutRectsBuilder::default();
     draw_topbar(frame, top, app, &theme);
     if let Some(sa) = sidebar_area {
         draw_sidebar(frame, sa, app, &mut builder);
     }
-    draw_tab_strip(frame, tabs_area, app);
+    draw_tab_strip(frame, tabs_area, app, &mut builder);
     if let Some(ha) = header_area {
         draw_room_header(frame, ha, app);
     }
@@ -248,8 +256,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     active_buffer.render(frame, buffer_area, &theme);
     draw_input(frame, input_area, app);
     draw_statusbar(frame, bottom, app);
-    // Task 9 will commit builder.build() into app.last_layout here.
-    let _ = builder;
+
+    app.last_layout = builder.build();
 }
 
 fn draw_too_small(frame: &mut Frame, area: Rect, theme: &crate::theme::Theme) {
@@ -457,7 +465,7 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App, builder: &mut LayoutRe
     frame.render_widget(para, area);
 }
 
-fn draw_tab_strip(frame: &mut Frame, area: Rect, app: &App) {
+fn draw_tab_strip(frame: &mut Frame, area: Rect, app: &App, builder: &mut LayoutRectsBuilder) {
     use ratatui::style::{Modifier, Style};
     use ratatui::text::{Line, Span};
 
@@ -465,7 +473,11 @@ fn draw_tab_strip(frame: &mut Frame, area: Rect, app: &App) {
 
     let theme = &app.theme;
     let mut current_line: Vec<Span> = Vec::new();
+    // current_width tracks accumulated width on the current row, used both for
+    // wrap detection and as the start_x for each new tab rect.
     let mut current_width: u16 = 0;
+    // row_y is the line index (0, 1, or 2) within the tabs_area, for rect y.
+    let mut row_y: u16 = 0;
     let mut lines: Vec<Line> = Vec::new();
 
     for (i, buf) in app.buffers.iter().enumerate() {
@@ -488,13 +500,26 @@ fn draw_tab_strip(frame: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(fg)
         };
 
+        // Wrap to a new row if this tab won't fit on the current one.
         if current_width + label_w + GUTTER > area.width && !current_line.is_empty() {
             lines.push(Line::from(std::mem::take(&mut current_line)));
             current_width = 0;
+            row_y = row_y.saturating_add(1);
         }
+
+        // Record start_x before advancing current_width — this is where the
+        // tab label begins on the current row.
+        let start_x = current_width;
+
         current_line.push(Span::styled(label, style));
         current_line.push(Span::raw(" "));
         current_width += label_w + GUTTER;
+
+        // Record tab rect: x is area.x + start_x (start of this tab on the row),
+        // y is area.y + row_y (which row within the tab strip), width is label_w.
+        builder
+            .tab_items
+            .push((i, Rect::new(area.x + start_x, area.y + row_y, label_w, 1)));
 
         if lines.len() >= 3 {
             current_line = vec![Span::styled(" … ", Style::default().fg(theme.muted))];
