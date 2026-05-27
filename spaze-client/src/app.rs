@@ -48,6 +48,7 @@ pub struct App {
     pub should_quit: bool,
     pub focus: FocusedRegion,
     pub sidebar_selected: Option<usize>,
+    pub last_layout: Option<crate::tui::LayoutRects>,
 }
 
 impl App {
@@ -74,6 +75,7 @@ impl App {
             should_quit: false,
             focus: FocusedRegion::Sidebar,
             sidebar_selected: Some(0),
+            last_layout: None,
         }
     }
 

@@ -1117,4 +1117,98 @@ mod tests {
         hb.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
         assert_eq!(hb.scroll, 0);
     }
+
+    fn make_test_layout(sidebar_visible: bool) -> super::tui::LayoutRects {
+        use super::tui::LayoutRects;
+        use ratatui::layout::Rect;
+
+        let sidebar = if sidebar_visible {
+            Some(Rect::new(0, 1, 24, 18))
+        } else {
+            None
+        };
+        LayoutRects {
+            sidebar,
+            tabs: Rect::new(if sidebar_visible { 24 } else { 0 }, 1, 56, 2),
+            buffer: Rect::new(if sidebar_visible { 24 } else { 0 }, 4, 56, 14),
+            input: Rect::new(if sidebar_visible { 24 } else { 0 }, 18, 56, 1),
+            status: Rect::new(0, 19, 80, 1),
+            topbar: Rect::new(0, 0, 80, 1),
+            room_header: Some(Rect::new(if sidebar_visible { 24 } else { 0 }, 3, 56, 1)),
+            // (Some(buffer_idx_or_none), rect): row 2 = header, row 3 = # general (idx 0)
+            sidebar_items: if sidebar_visible {
+                vec![
+                    (None, Rect::new(0, 2, 24, 1)),    // server header
+                    (Some(0), Rect::new(0, 3, 24, 1)), // # general
+                ]
+            } else {
+                vec![]
+            },
+            tab_items: vec![
+                (0, Rect::new(if sidebar_visible { 24 } else { 0 }, 1, 12, 1)), // # general tab
+                (1, Rect::new(if sidebar_visible { 36 } else { 12 }, 1, 8, 1)), // ? help tab
+            ],
+        }
+    }
+
+    #[test]
+    fn region_at_maps_sidebar_row_to_sidebar_with_buffer_idx() {
+        use super::tui::{MouseHit, region_at};
+        let layout = make_test_layout(true);
+        // Click on row 3 (= # general row)
+        assert_eq!(
+            region_at(5, 3, &layout),
+            Some(MouseHit::Sidebar {
+                selected_buffer_idx: Some(0)
+            })
+        );
+    }
+
+    #[test]
+    fn region_at_maps_sidebar_header_to_sidebar_none() {
+        use super::tui::{MouseHit, region_at};
+        let layout = make_test_layout(true);
+        // Click on row 2 (= server header)
+        assert_eq!(
+            region_at(5, 2, &layout),
+            Some(MouseHit::Sidebar {
+                selected_buffer_idx: None
+            })
+        );
+    }
+
+    #[test]
+    fn region_at_maps_tab_strip_to_tab_idx() {
+        use super::tui::{MouseHit, region_at};
+        let layout = make_test_layout(true);
+        // Click on the second tab (Help) — x range 36..44 at y=1
+        assert_eq!(
+            region_at(40, 1, &layout),
+            Some(MouseHit::Tab { buffer_idx: 1 })
+        );
+    }
+
+    #[test]
+    fn region_at_maps_input_to_input() {
+        use super::tui::{MouseHit, region_at};
+        let layout = make_test_layout(true);
+        // Input row is at y=18, x range 24..80
+        assert_eq!(region_at(30, 18, &layout), Some(MouseHit::Input));
+    }
+
+    #[test]
+    fn region_at_outside_all_rects_is_none() {
+        use super::tui::region_at;
+        let layout = make_test_layout(true);
+        // Click on status bar (y=19) is not mapped to any focusable region.
+        assert_eq!(region_at(40, 19, &layout), None);
+    }
+
+    #[test]
+    fn region_at_with_sidebar_hidden_treats_left_columns_as_buffer() {
+        use super::tui::{MouseHit, region_at};
+        let layout = make_test_layout(false);
+        // x=5, y=10 — sidebar is hidden, so this hits the buffer (which starts at x=0).
+        assert_eq!(region_at(5, 10, &layout), Some(MouseHit::Buffer));
+    }
 }

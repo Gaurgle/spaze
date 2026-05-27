@@ -24,6 +24,79 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::App;
 
+/// Layout rectangles cached after each `draw()` for mouse hit-testing.
+#[derive(Debug, Clone)]
+pub struct LayoutRects {
+    pub sidebar: Option<Rect>,
+    pub tabs: Rect,
+    pub buffer: Rect,
+    pub input: Rect,
+    pub status: Rect,
+    pub topbar: Rect,
+    pub room_header: Option<Rect>,
+    /// (`buffer_idx_if_selectable`, `row_rect`) for each sidebar row.
+    /// `None` indicates a header row (no buffer associated).
+    pub sidebar_items: Vec<(Option<usize>, Rect)>,
+    /// (`buffer_idx`, `tab_rect`) for each tab in the tab strip.
+    pub tab_items: Vec<(usize, Rect)>,
+}
+
+/// Result of `region_at` — what was clicked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MouseHit {
+    Sidebar { selected_buffer_idx: Option<usize> },
+    Tab { buffer_idx: usize },
+    Buffer,
+    Input,
+}
+
+/// Map a mouse click at (col, row) to a region. Returns `None` for clicks
+/// outside all focusable regions (status bar, topbar, gutters).
+#[must_use]
+pub fn region_at(col: u16, row: u16, layout: &LayoutRects) -> Option<MouseHit> {
+    fn contains(rect: Rect, col: u16, row: u16) -> bool {
+        col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
+    }
+    // Sidebar takes precedence (if visible and clicked).
+    if let Some(sb) = layout.sidebar {
+        if contains(sb, col, row) {
+            // Find which sidebar row was hit.
+            for (buffer_idx, item_rect) in &layout.sidebar_items {
+                if contains(*item_rect, col, row) {
+                    return Some(MouseHit::Sidebar {
+                        selected_buffer_idx: *buffer_idx,
+                    });
+                }
+            }
+            // Click on sidebar but not on any item row (e.g., empty area at bottom).
+            return Some(MouseHit::Sidebar {
+                selected_buffer_idx: None,
+            });
+        }
+    }
+    // Tabs.
+    if contains(layout.tabs, col, row) {
+        for (buffer_idx, tab_rect) in &layout.tab_items {
+            if contains(*tab_rect, col, row) {
+                return Some(MouseHit::Tab {
+                    buffer_idx: *buffer_idx,
+                });
+            }
+        }
+        // Click on tab strip but outside any tab — no region.
+        return None;
+    }
+    // Input.
+    if contains(layout.input, col, row) {
+        return Some(MouseHit::Input);
+    }
+    // Buffer.
+    if contains(layout.buffer, col, row) {
+        return Some(MouseHit::Buffer);
+    }
+    None
+}
+
 pub const MIN_COLS: u16 = 60;
 pub const MIN_ROWS: u16 = 20;
 
