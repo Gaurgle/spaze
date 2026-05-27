@@ -101,6 +101,23 @@ impl App {
         self.buffers.iter().position(pred)
     }
 
+    /// Set the focused region, maintaining the invariant:
+    /// `focus == Input` iff `mode == Insert`.
+    ///
+    /// Setting `Input` enters Insert mode (mouse-click-on-input shortcut).
+    /// Setting non-Input from Insert mode returns to Normal (click elsewhere).
+    pub fn set_focus(&mut self, region: FocusedRegion) {
+        self.focus = region;
+        match region {
+            FocusedRegion::Input => self.mode = InputMode::Insert,
+            _ => {
+                if matches!(self.mode, InputMode::Insert) {
+                    self.mode = InputMode::Normal;
+                }
+            }
+        }
+    }
+
     /// Apply a command effect. The single mutation point for command-driven
     /// state changes. The wire-level send for `SendActionMessage` is *not*
     /// performed here — it requires async access to the WS sink, so the

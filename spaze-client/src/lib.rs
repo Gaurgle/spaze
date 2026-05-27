@@ -856,4 +856,56 @@ mod tests {
         }
         assert!(app.should_quit);
     }
+
+    #[test]
+    fn set_focus_input_enters_insert_mode() {
+        use super::app::{App, FocusedRegion, Identity, InputMode};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert_eq!(app.mode, InputMode::Normal);
+        app.set_focus(FocusedRegion::Input);
+        assert_eq!(app.focus, FocusedRegion::Input);
+        assert_eq!(app.mode, InputMode::Insert);
+    }
+
+    #[test]
+    fn set_focus_non_input_exits_insert_mode() {
+        use super::app::{App, FocusedRegion, Identity, InputMode};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        app.mode = InputMode::Insert;
+        app.focus = FocusedRegion::Input;
+        app.set_focus(FocusedRegion::Sidebar);
+        assert_eq!(app.focus, FocusedRegion::Sidebar);
+        assert_eq!(app.mode, InputMode::Normal);
+    }
+
+    #[test]
+    fn set_focus_non_input_from_normal_does_not_change_mode() {
+        use super::app::{App, FocusedRegion, Identity, InputMode};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert_eq!(app.mode, InputMode::Normal);
+        app.set_focus(FocusedRegion::Buffer);
+        assert_eq!(app.focus, FocusedRegion::Buffer);
+        assert_eq!(app.mode, InputMode::Normal);
+    }
 }
