@@ -999,7 +999,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-client"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1020,15 +1020,15 @@ dependencies = [
 
 [[package]]
 name = "spaze-commands"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "spaze-crypto"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "spaze-proto"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1038,7 +1038,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-server"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "spaze-storage"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "static_assertions"
