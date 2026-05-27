@@ -41,6 +41,39 @@ pub struct LayoutRects {
     pub tab_items: Vec<(usize, Rect)>,
 }
 
+/// Builder used during `draw()` to collect rects from each render helper
+/// into a final `LayoutRects`. Finalized after all renders complete.
+#[derive(Debug, Default)]
+#[allow(dead_code)] // Fields wired up in Task 9.
+pub(crate) struct LayoutRectsBuilder {
+    pub sidebar: Option<Rect>,
+    pub tabs: Option<Rect>,
+    pub buffer: Option<Rect>,
+    pub input: Option<Rect>,
+    pub status: Option<Rect>,
+    pub topbar: Option<Rect>,
+    pub room_header: Option<Rect>,
+    pub sidebar_items: Vec<(Option<usize>, Rect)>,
+    pub tab_items: Vec<(usize, Rect)>,
+}
+
+impl LayoutRectsBuilder {
+    #[allow(dead_code)] // Called in Task 9.
+    pub(crate) fn build(self) -> Option<LayoutRects> {
+        Some(LayoutRects {
+            sidebar: self.sidebar,
+            tabs: self.tabs?,
+            buffer: self.buffer?,
+            input: self.input?,
+            status: self.status?,
+            topbar: self.topbar?,
+            room_header: self.room_header,
+            sidebar_items: self.sidebar_items,
+            tab_items: self.tab_items,
+        })
+    }
+}
+
 /// Result of `region_at` — what was clicked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MouseHit {
@@ -202,9 +235,10 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     };
 
     let theme = app.theme;
+    let mut builder = LayoutRectsBuilder::default();
     draw_topbar(frame, top, app, &theme);
     if let Some(sa) = sidebar_area {
-        draw_sidebar(frame, sa, app);
+        draw_sidebar(frame, sa, app, &mut builder);
     }
     draw_tab_strip(frame, tabs_area, app);
     if let Some(ha) = header_area {
@@ -214,6 +248,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     active_buffer.render(frame, buffer_area, &theme);
     draw_input(frame, input_area, app);
     draw_statusbar(frame, bottom, app);
+    // Task 9 will commit builder.build() into app.last_layout here.
+    let _ = builder;
 }
 
 fn draw_too_small(frame: &mut Frame, area: Rect, theme: &crate::theme::Theme) {
@@ -268,9 +304,17 @@ fn draw_topbar(frame: &mut Frame, area: Rect, app: &App, theme: &crate::theme::T
     frame.render_widget(para, area);
 }
 
-fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App) {
+#[allow(clippy::too_many_lines)] // Inherently long: one push+rect per sidebar row.
+fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App, builder: &mut LayoutRectsBuilder) {
     use ratatui::style::{Modifier, Style};
     use ratatui::text::{Line, Span};
+
+    builder.sidebar = Some(area);
+    let mut current_row: u16 = 0;
+
+    // Helper macro: push a line + a builder item with the current row rect, then advance.
+    // Using a closure would need &mut borrows on both lines and builder simultaneously,
+    // so we batch pushes and track current_row manually instead.
 
     let theme = &app.theme;
     let mut lines: Vec<Line> = Vec::new();
@@ -279,6 +323,10 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App) {
         " SERVERS",
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
 
     let server_label = match &app.connection {
         crate::app::ConnectionState::Connected { server_url } => {
@@ -292,21 +340,46 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App) {
             .fg(theme.primary)
             .add_modifier(Modifier::BOLD),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
+
     lines.push(Line::from(vec![Span::styled(
         "    › repo binding TBD".to_string(),
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
 
     lines.push(Line::raw(""));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
+
     lines.push(Line::from(vec![Span::styled(
         "    ROOMS",
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
 
     for (i, buf) in app.buffers.iter().enumerate() {
         if let crate::buffers::Buffer::Room(rb) = buf {
-            let active = i == app.active;
-            let style = if active {
+            let is_selected = app.sidebar_selected == Some(i);
+            let focused = matches!(app.focus, crate::app::FocusedRegion::Sidebar);
+            let style = if is_selected && focused {
+                // Inverted-bg cursor when sidebar has focus.
+                Style::default().fg(theme.background).bg(theme.foreground)
+            } else if is_selected {
+                // Dimmed cursor when sidebar lost focus.
+                Style::default().fg(theme.foreground).bg(theme.surface)
+            } else if i == app.active {
                 Style::default().fg(theme.tab_room).bg(theme.overlay)
             } else {
                 Style::default().fg(theme.subtle)
@@ -315,18 +388,37 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App) {
                 format!("    {}", rb.title()),
                 style,
             )]));
+            builder.sidebar_items.push((
+                Some(i),
+                Rect::new(area.x, area.y + current_row, area.width, 1),
+            ));
+            current_row = current_row.saturating_add(1);
         }
     }
 
     lines.push(Line::raw(""));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
+
     lines.push(Line::from(vec![Span::styled(
         "    DIRECT MESSAGES",
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
+
     lines.push(Line::from(vec![Span::styled(
         "    (none)".to_string(),
         Style::default().fg(theme.subtle),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
 
     // Footer at the bottom of the sidebar.
     let lines_len_u16 = u16::try_from(lines.len()).unwrap_or(u16::MAX);
@@ -336,15 +428,30 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App) {
     }
     while u16::try_from(lines.len()).unwrap_or(u16::MAX) < footer_y {
         lines.push(Line::raw(""));
+        builder
+            .sidebar_items
+            .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+        current_row = current_row.saturating_add(1);
     }
+
     lines.push(Line::from(vec![Span::styled(
         " + add server…",
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    current_row = current_row.saturating_add(1);
+
     lines.push(Line::from(vec![Span::styled(
         " 🔍 search   ⚙ settings   ? help",
         Style::default().fg(theme.muted),
     )]));
+    builder
+        .sidebar_items
+        .push((None, Rect::new(area.x, area.y + current_row, area.width, 1)));
+    // current_row no longer needed after last push — suppress lint.
+    let _ = current_row;
 
     let para = Paragraph::new(lines).style(Style::default().bg(theme.surface));
     frame.render_widget(para, area);
