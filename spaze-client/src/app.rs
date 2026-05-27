@@ -118,6 +118,60 @@ impl App {
         }
     }
 
+    /// Move sidebar selection to the previous Room buffer (wraps around).
+    /// No-op if there are zero or one selectable items.
+    pub fn sidebar_move_up(&mut self) {
+        let selectable: Vec<usize> = self
+            .buffers
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, Buffer::Room(_)))
+            .map(|(i, _)| i)
+            .collect();
+        if selectable.is_empty() {
+            self.sidebar_selected = None;
+            return;
+        }
+        let cur = self.sidebar_selected.unwrap_or(selectable[0]);
+        let pos = selectable.iter().position(|&i| i == cur).unwrap_or(0);
+        let prev = if pos == 0 {
+            selectable[selectable.len() - 1]
+        } else {
+            selectable[pos - 1]
+        };
+        self.sidebar_selected = Some(prev);
+    }
+
+    /// Move sidebar selection to the next Room buffer (wraps around).
+    /// No-op if there are zero or one selectable items.
+    pub fn sidebar_move_down(&mut self) {
+        let selectable: Vec<usize> = self
+            .buffers
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, Buffer::Room(_)))
+            .map(|(i, _)| i)
+            .collect();
+        if selectable.is_empty() {
+            self.sidebar_selected = None;
+            return;
+        }
+        let cur = self.sidebar_selected.unwrap_or(selectable[0]);
+        let pos = selectable.iter().position(|&i| i == cur).unwrap_or(0);
+        let next = selectable[(pos + 1) % selectable.len()];
+        self.sidebar_selected = Some(next);
+    }
+
+    /// Activate the currently selected sidebar item (switch active tab).
+    /// No-op if `sidebar_selected == None`.
+    pub fn sidebar_activate(&mut self) {
+        if let Some(idx) = self.sidebar_selected {
+            if idx < self.buffers.len() {
+                self.active = idx;
+            }
+        }
+    }
+
     /// Apply a command effect. The single mutation point for command-driven
     /// state changes. The wire-level send for `SendActionMessage` is *not*
     /// performed here — it requires async access to the WS sink, so the
