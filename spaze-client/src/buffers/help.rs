@@ -66,12 +66,22 @@ impl HelpBuffer {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
+        use crossterm::event::KeyModifiers;
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Char('d') if ctrl => {
+                self.scroll = self.scroll.saturating_add(5);
+                true
+            }
+            KeyCode::Char('u') if ctrl => {
+                self.scroll = self.scroll.saturating_sub(5);
+                true
+            }
+            KeyCode::Up | KeyCode::Char('k') if !ctrl => {
                 self.scroll = self.scroll.saturating_sub(1);
                 true
             }
-            KeyCode::Down | KeyCode::Char('j') => {
+            KeyCode::Down | KeyCode::Char('j') if !ctrl => {
                 self.scroll = self.scroll.saturating_add(1);
                 true
             }

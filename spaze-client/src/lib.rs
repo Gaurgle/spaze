@@ -1104,4 +1104,17 @@ mod tests {
         rb.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL));
         assert_eq!(rb.scroll.offset_from_bottom, 5);
     }
+
+    #[test]
+    fn help_buffer_ctrl_u_and_ctrl_d_scroll_half_page() {
+        use super::buffers::HelpBuffer;
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut hb = HelpBuffer::new();
+        hb.scroll = 0;
+        hb.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        assert_eq!(hb.scroll, 5);
+        hb.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert_eq!(hb.scroll, 0);
+    }
 }
