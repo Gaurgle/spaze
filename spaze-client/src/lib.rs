@@ -908,4 +908,127 @@ mod tests {
         assert_eq!(app.focus, FocusedRegion::Buffer);
         assert_eq!(app.mode, InputMode::Normal);
     }
+
+    #[test]
+    fn sidebar_move_with_single_item_is_no_op() {
+        use super::app::{App, Identity};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        assert_eq!(app.sidebar_selected, Some(0));
+        app.sidebar_move_up();
+        assert_eq!(app.sidebar_selected, Some(0));
+        app.sidebar_move_down();
+        assert_eq!(app.sidebar_selected, Some(0));
+    }
+
+    #[test]
+    fn sidebar_move_down_wraps_with_multiple_rooms() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use spaze_proto::{DeviceId, RoomId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        // Push two more Room buffers (layout becomes [Room@0, Help@1, Room@2, Room@3]).
+        app.buffers.push(Buffer::Room(RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# second".into(),
+            RoomKind::Standard,
+            "test".into(),
+        )));
+        app.buffers.push(Buffer::Room(RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# third".into(),
+            RoomKind::Standard,
+            "test".into(),
+        )));
+        // Selection cycles 0 → 2 → 3 → 0 (Help at idx 1 is skipped).
+        app.sidebar_selected = Some(0);
+        app.sidebar_move_down();
+        assert_eq!(app.sidebar_selected, Some(2));
+        app.sidebar_move_down();
+        assert_eq!(app.sidebar_selected, Some(3));
+        app.sidebar_move_down();
+        assert_eq!(app.sidebar_selected, Some(0));
+    }
+
+    #[test]
+    fn sidebar_move_up_wraps_with_multiple_rooms() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use spaze_proto::{DeviceId, RoomId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        app.buffers.push(Buffer::Room(RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# second".into(),
+            RoomKind::Standard,
+            "test".into(),
+        )));
+        // Layout: [Room@0, Help@1, Room@2]. Selectable: [0, 2].
+        app.sidebar_selected = Some(0);
+        app.sidebar_move_up();
+        assert_eq!(app.sidebar_selected, Some(2));
+        app.sidebar_move_up();
+        assert_eq!(app.sidebar_selected, Some(0));
+    }
+
+    #[test]
+    fn sidebar_activate_switches_active_tab() {
+        use super::app::{App, Identity};
+        use super::buffers::Buffer;
+        use super::buffers::room_timeline::{RoomKind, RoomTimelineBuffer};
+        use spaze_proto::{DeviceId, RoomId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        app.buffers.push(Buffer::Room(RoomTimelineBuffer::new(
+            RoomId::new(),
+            "# second".into(),
+            RoomKind::Standard,
+            "test".into(),
+        )));
+        assert_eq!(app.active, 0);
+        app.sidebar_selected = Some(2);
+        app.sidebar_activate();
+        assert_eq!(app.active, 2);
+    }
+
+    #[test]
+    fn sidebar_activate_with_none_selection_is_no_op() {
+        use super::app::{App, Identity};
+        use spaze_proto::{DeviceId, UserId};
+
+        let identity = Identity {
+            user_id: UserId::new(),
+            device_id: DeviceId::new(),
+            display_name: "test".into(),
+        };
+        let mut app = App::new(identity, "ws://localhost".into());
+        app.sidebar_selected = None;
+        let prior_active = app.active;
+        app.sidebar_activate();
+        assert_eq!(app.active, prior_active);
+    }
 }
