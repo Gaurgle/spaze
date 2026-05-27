@@ -388,8 +388,10 @@ fn draw_sidebar(frame: &mut Frame, area: Rect, app: &App, builder: &mut LayoutRe
                 // Inverted-bg cursor when sidebar has focus.
                 Style::default().fg(theme.background).bg(theme.foreground)
             } else if is_selected {
-                // Dimmed cursor when sidebar lost focus.
-                Style::default().fg(theme.foreground).bg(theme.surface)
+                // Dimmed cursor when sidebar lost focus. `overlay` (not `surface`)
+                // because the sidebar's own background is already `surface` — using
+                // it for the cursor bg leaves the row invisible.
+                Style::default().fg(theme.foreground).bg(theme.overlay)
             } else if i == app.active {
                 Style::default().fg(theme.tab_room).bg(theme.overlay)
             } else {
